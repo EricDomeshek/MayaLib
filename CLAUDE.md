@@ -6,7 +6,7 @@ Standing instructions for Claude Code sessions in this repository. Draft; revise
 
 MayaLib is a lightweight, portable reading assistant for academic research (initial user: an economics PhD workflow). It covers capturing items to read, bibliographic references, notes while reading, and filing and search by keywords, notes and full text. Targets: Mac, iPhone, and Boox (Android e-ink).
 
-**Status:** design phase. No implementation code yet.
+**Status:** design phase, with Spike 0 (`spike0/`) under way: a throwaway feasibility app (D19). No production code yet.
 
 **Source of truth for design:** [`docs/design.md`](docs/design.md). Read the relevant sections before making changes. Section 19 (decisions log) and section 20 (open questions) are the quickest orientation.
 
@@ -38,7 +38,7 @@ MayaLib is a lightweight, portable reading assistant for academic research (init
 - When a decision is made or changed, update `docs/design.md`: the relevant section, the decisions log (§19) and the open questions (§20). Keep the "Changes from Draft N" note at the top current.
 - Keep the design doc's examples consistent with the rules above, e.g. no real DOIs or identifiers presented as data.
 - Prefer small, focused commits with descriptive messages.
-- When code exists: write tests alongside it. Every storage provider must pass the shared conformance suite (design §4.1).
+- Production code: write tests alongside it. Every storage provider must pass the shared conformance suite (design §4.1). `spike0/` is throwaway and exempt; don't build production code on top of it.
 
 ## Repository layout (current)
 
@@ -48,4 +48,5 @@ docs/design.md   design document (source of truth)
 LICENSE          Apache-2.0
 NOTICE
 .gitignore       excludes local config, .env, build output
+spike0/          Spike 0: throwaway device-feasibility app (own package.json; see its README)
 ```

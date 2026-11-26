@@ -1,0 +1,23 @@
+/* E-ink friendly: black on white, no animation, large tap targets. */
+* { box-sizing: border-box; animation: none !important; transition: none !important; }
+body { margin: 0; font: 17px/1.45 system-ui, -apple-system, sans-serif; color: #000; background: #fff; }
+main { max-width: 760px; margin: 0 auto; padding: 12px 14px 80px; }
+h1 { font-size: 1.4em; margin: 8px 0; }
+h2 { font-size: 1.15em; margin: 0 0 6px; }
+section { border: 2px solid #000; border-radius: 6px; padding: 12px; margin: 14px 0; }
+button, select, input[type="text"], input[type="number"], textarea {
+  font: inherit; color: #000; background: #fff; border: 2px solid #000; border-radius: 6px;
+  min-height: 44px; padding: 6px 12px; margin: 4px 6px 4px 0;
+}
+button:active { background: #000; color: #fff; }
+button:disabled { opacity: 0.4; }
+input[type="text"], textarea { width: 100%; }
+textarea { min-height: 120px; font-family: ui-monospace, monospace; font-size: 13px; }
+pre { white-space: pre-wrap; word-break: break-word; font-size: 13px; background: #f2f2f2; padding: 8px; border-radius: 4px; max-height: 320px; overflow: auto; }
+.row { display: flex; flex-wrap: wrap; align-items: center; }
+.ok { font-weight: bold; }
+.bad { font-weight: bold; text-decoration: underline; }
+.muted { color: #444; font-size: 0.9em; }
+nav { position: sticky; top: 0; background: #fff; border-bottom: 2px solid #000; padding: 6px 0; z-index: 1; }
+nav a { color: #000; margin-right: 12px; font-weight: bold; }
+canvas { max-width: 100%; border: 1px solid #000; margin-top: 6px; }
