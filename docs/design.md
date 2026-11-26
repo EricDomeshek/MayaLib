@@ -506,8 +506,51 @@ restriction:
 
 Drive supplies `storage`, `rangeRead` and `remoteSearch`, and keeps file revisions as a last-resort undo. Every one of these has a replacement (§4).
 
-- **Deployment configuration:** the OAuth client ID identifies a *deployment* (an app registration in a Google Cloud project), not a user, and the user's Drive account is unrelated to it. It is never committed. It is injected at build time from a GitHub Actions variable (or an uncommitted `config.local.json` for local development) into the deployed `config.json`. It is unavoidably visible in the deployed app and in sign-in requests; this is normal for browser OAuth clients. Forks register their own Cloud project and client ID. Optionally, use a dedicated Google account and contact email for the Cloud project, since the consent screen shows them.
-- **Authorization:** OAuth via Google Identity Services with the `drive.file` scope. Publish the OAuth app to production with only this scope (to confirm during setup: this avoids the 7-day token expiry of testing mode).
+### 16.1 How access is granted
+
+MayaLib never signs in as anyone. **The user signs into their own Google account and grants MayaLib limited access to their Drive.** MayaLib only ever holds a short-lived access pass (a token), never the user's password.
+
+First launch on each device:
+
+1. The user taps *Connect Google Drive*.
+2. Google's own page opens. The user signs in (or is already signed in) and sees: "**MayaLib** wants to see and edit the files it creates in your Google Drive."
+3. The user approves. Google gives MayaLib a token that lasts about an hour, covers only the approved permissions, and is renewed silently while the user stays signed into Google in that browser.
+4. The user chooses or creates the library folder. The account hint and folder ID are stored on that device only.
+
+**Why the browser's existing Google login isn't used directly:** if any website could use a visitor's Google login to read their Drive, every site could read everyone's Drive. So Google requires each app to identify itself, get the user's explicit approval for that particular app, and use a pass limited to what was approved. Like a valet key: the user chooses to hand it over, it opens only certain things, and it can be taken back.
+
+**Revoking access:** the user revokes MayaLib's access in their Google account (Security → Third-party apps), which cuts off every device at once. Permission is therefore managed outside MayaLib, by the user's Google account. That is the nearest equivalent, on mobile, to the "access managed by the operating system" goal: on the Mac, Google Drive for desktop already holds access and exposes an ordinary folder to every app, but iOS and Android have no such shared folder, so each app must request its own pass.
+
+### 16.2 App registration (the OAuth client)
+
+Google identifies the requesting app by an **OAuth client ID**. A web address plus an app name is not enough: Google issues tokens only to registered clients. Registration gives Google an accountable owner, a way to suspend an abusive app, a place to apply usage limits, and a basis for its "unverified app" checks. (Some newer systems let an app identify itself by its URL alone, as Bluesky's AT Protocol does, but Google, Dropbox and Microsoft do not. Each future storage provider will need its own one-time registration, except self-hosted ones such as WebDAV/Nextcloud, which typically use an app-specific password instead.)
+
+The registration lives in a Google Cloud project, owned by **any** Google account (a dedicated account is fine). It need not be the account whose Drive MayaLib uses. It is free, and the Drive API needs no billing account. It records:
+
+- **Allowed web addresses** (JavaScript origins), e.g. `https://ericdomeshek.github.io` and `http://localhost:5173`. Sign-in requests using this client ID from any other address are refused, which stops other sites from posing as MayaLib.
+- **Consent screen details:** app name ("MayaLib"), optional logo, and a contact email. The user sees these when approving.
+- **Permissions requested** (`drive.file`, or `drive` — see open question 9) and the publishing status (testing or published).
+- **The Google Drive API being turned on** for the project.
+
+The client ID identifies a **deployment**, not a user. It contains no name or email and is not a secret. On its own it grants access to nothing.
+
+### 16.3 Deployment configuration
+
+- The client ID is **never committed** to the repository. It is supplied at build time from a GitHub Actions variable, or from an uncommitted `config.local.json` for local development, and written into the deployed `config.json`.
+- It is unavoidably visible in the deployed app and in sign-in requests. This is normal for browser OAuth clients and is harmless because of the allowed-address restriction.
+- Anyone who runs their own copy of MayaLib registers their own Cloud project and client ID. No one should sign in through someone else's deployment, which would name that person as the app's developer.
+
+### 16.4 Setup procedure (once per deployment, ~15 minutes)
+
+1. In the Google Cloud console, create a project (e.g. `mayalib`) under the chosen Google account.
+2. Turn on the **Google Drive API** (APIs & Services → Library).
+3. Set up the **OAuth consent screen**: user type *External*; app name *MayaLib*; contact email; add the permission (`drive.file`); add your own account as a test user.
+4. Create the **OAuth client** (Credentials → Create credentials → OAuth client ID → *Web application*). Add the allowed web addresses: the production host (e.g. `https://ericdomeshek.github.io`) and the local development address (e.g. `http://localhost:5173`). No redirect URIs are needed for the browser token flow.
+5. Copy the client ID into the GitHub repository's Actions variables (Settings → Secrets and variables → Actions → Variables) as `GOOGLE_CLIENT_ID`, and into `config.local.json` for local development.
+6. Decide the publishing status. Testing mode limits sign-in to listed test users and may make approvals expire after 7 days; publishing without verification shows a one-time "unverified app" warning for some permissions. **To confirm in the setup spike** for `drive.file` and `drive`.
+
+### 16.5 Drive adapter mechanics
+
 - **Paths ↔ IDs:** a cached path→ID map. Duplicate names in one folder are surfaced as conflicts.
 - **Conditional writes:** emulated by checking the file's current version and then writing.
 - **Changes:** `changes.list` with a start page token serves as the `changesSince` cursor.
