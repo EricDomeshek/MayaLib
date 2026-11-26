@@ -675,7 +675,7 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 - **Sign-in:** after the redirect fix, both pop-up (Safari tab) and redirect (Home Screen app) sign-in work on the iPad.
 - **Page capture on iPad Safari works**, including a page behind a sign-in (in-page capture saves what the user sees): 350–810 KB of HTML handed over in 0.9–1.2 s. **But captures land in Safari's storage and do not appear in the Home Screen app**, which has separate storage on iOS. **Implication:** on iOS, captured pages must travel through Drive. The capture page signs in and uploads the snapshot to the library's `inbox/` (visible to the app under `drive.file`, since MayaLib created it), or the iOS Shortcut saves it there (needs a picker import under `drive.file`). The app files inbox items on its next sync.
 - **Capturing signed-in pages can sweep up sensitive content** (account pages, for example). The capture flow should show what is about to be saved, allow cancelling, and let the user mark the capture restricted before anything leaves the device (§13).
-- Safari-tab quota on the iPad: ~41 GB.
+- **Home Screen app storage:** `standalone: true`; **persistent storage was granted** (`persisted: true`; the Safari tab was not); quota ~41 GB, the same as the tab. Its survival markers were first set separately from the Safari tab's, confirming separate storage containers. Survival over 3 and 8+ days of non-use is still to check (§20.7).
 
 **Still to run:** Google Picker import under `drive.file`; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
 
