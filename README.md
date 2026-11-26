@@ -10,12 +10,13 @@ A lightweight, portable reading assistant for academic research: capture what to
 - **No server.** MayaLib is a static web app (PWA). Each device talks directly to your storage provider; the host only serves the app's code.
 - **Swappable storage and services.** Google Drive is the first storage provider, behind an interface designed so it can be replaced.
 - **Targets:** Mac, iPhone, and Android e-ink readers (Boox).
+- **Stack:** Preact + TypeScript + Vite; SQLite (WebAssembly) for search; hosted on Cloudflare.
 
 ## No secrets or account information in this repository
 
 This repository is public. It must never contain credentials, tokens, OAuth client IDs, library folder IDs, or personal data.
 
-- **Deployment configuration** (such as the Google OAuth client ID) is supplied at build time from GitHub Actions variables or an uncommitted `config.local.json`, never from committed files.
+- **Deployment configuration** (such as the Google OAuth client ID) is supplied at build time from the hosting provider's build environment variables or an uncommitted `config.local.json`, never from committed files.
 - **Each deployment uses its own Google Cloud project and OAuth client.** If you run your own copy of MayaLib, register your own client ID rather than signing in through someone else's deployment.
 - **Each user signs in with Google** at first launch on each device. Per-device settings (account hint, library folder) stay on that device.
 

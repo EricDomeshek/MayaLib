@@ -2,7 +2,7 @@
 
 *Status: draft for review · Last updated 2026-11-25*
 
-**Since Draft 3:** decisions D14–D19 resolve most open questions; Spike 0 defined (D19).
+**Since Draft 3:** decisions D14–D21 resolve most open questions: Spike 0 defined (D19); hosting on Cloudflare at `mayalib.org` (D20); UI in Preact (D21).
 
 **Changes from Draft 2:** platform targets and distribution with no paid Apple developer account (§3.1); web storage and retention limits (§3.2); native and wrapped options considered (§3.3); per-device storage budgets (§5.5).
 
@@ -61,7 +61,7 @@ UI (installable PWA; e-ink-friendly mode)
 | Boox (Android) | PWA in Chrome; optionally a wrapped app (Capacitor) | APK install | Free. Android developer verification (regional from Sept 2026, global in 2027) has a free limited-distribution tier for hobbyists and personal use, and installing over USB with ADB remains available |
 | Mac | PWA (Chrome/Edge install, or Safari "Add to Dock"); optionally a wrapped desktop app (Tauri/Electron) | Built and installed locally | Unsigned apps you build yourself run on your own Mac; macOS may ask for a one-time override |
 
-- **Hosting (app code only, no backend):** browsers will only install a PWA, run its offline service worker, and complete Google sign-in when the app is loaded from an HTTPS address (or from `localhost`). Opening files copied to the device (`file://`) does not work, and Google Drive no longer serves web pages. So the built app (static HTML/JS/CSS) is published to a free static host such as GitHub Pages, Cloudflare Pages or Firebase Hosting.
+- **Hosting (app code only, no backend; Cloudflare per D20):** browsers will only install a PWA, run its offline service worker, and complete Google sign-in when the app is loaded from an HTTPS address (or from `localhost`). Opening files copied to the device (`file://`) does not work, and Google Drive no longer serves web pages. So the built app (static HTML/JS/CSS) is published to a free static host: Cloudflare, at `mayalib.org` (D20).
   - The host never sees library data. Devices talk directly to Google Drive.
   - The host is needed only to install the app and to fetch updates; after that the app runs from the device's cache, offline included.
   - Browser storage and the OAuth settings are tied to the address, so choose it early. If the host disappears, installed copies keep working and the app can be republished elsewhere; each device then reinstalls and rebuilds its cache from Drive. No data is lost.
@@ -529,7 +529,7 @@ Google identifies the requesting app by an **OAuth client ID**. A web address pl
 
 The registration lives in a Google Cloud project, owned by **any** Google account (a dedicated account is fine). It need not be the account whose Drive MayaLib uses. It is free, and the Drive API needs no billing account. It records:
 
-- **Allowed web addresses** (JavaScript origins), e.g. `https://ericdomeshek.github.io` and `http://localhost:5173`. Sign-in requests using this client ID from any other address are refused, which stops other sites from posing as MayaLib.
+- **Allowed web addresses** (JavaScript origins), e.g. `https://mayalib.org` and `http://localhost:5173`. Sign-in requests using this client ID from any other address are refused, which stops other sites from posing as MayaLib.
 - **Consent screen details:** app name ("MayaLib"), optional logo, and a contact email. The user sees these when approving.
 - **Permissions requested** (`drive.file`, or `drive` — see open question 9) and the publishing status (testing or published).
 - **The Google Drive API being turned on** for the project.
@@ -538,7 +538,7 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 
 ### 16.3 Deployment configuration
 
-- The client ID is **never committed** to the repository. It is supplied at build time from a GitHub Actions variable, or from an uncommitted `config.local.json` for local development, and written into the deployed `config.json`.
+- The client ID is **never committed** to the repository. It is supplied at build time as an environment variable of the Cloudflare project (`GOOGLE_CLIENT_ID`), or from an uncommitted `config.local.json` for local development, and written into the deployed `config.json`.
 - It is unavoidably visible in the deployed app and in sign-in requests. This is normal for browser OAuth clients and is harmless because of the allowed-address restriction.
 - Anyone who runs their own copy of MayaLib registers their own Cloud project and client ID. No one should sign in through someone else's deployment, which would name that person as the app's developer.
 
@@ -547,8 +547,8 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 1. In the Google Cloud console, create a project (e.g. `mayalib`) under the chosen Google account.
 2. Turn on the **Google Drive API** (APIs & Services → Library).
 3. Set up the **OAuth consent screen**: user type *External*; app name *MayaLib*; contact email; add the permission (`drive.file`); add your own account as a test user.
-4. Create the **OAuth client** (Credentials → Create credentials → OAuth client ID → *Web application*). Add the allowed web addresses: the production host (e.g. `https://ericdomeshek.github.io`) and the local development address (e.g. `http://localhost:5173`). No redirect URIs are needed for the browser token flow.
-5. Copy the client ID into the GitHub repository's Actions variables (Settings → Secrets and variables → Actions → Variables) as `GOOGLE_CLIENT_ID`, and into `config.local.json` for local development.
+4. Create the **OAuth client** (Credentials → Create credentials → OAuth client ID → *Web application*). Add the allowed web addresses: the production host (`https://mayalib.org`, plus the `*.pages.dev` address if used) and the local development address (e.g. `http://localhost:5173`). No redirect URIs are needed for the browser token flow.
+5. Set the client ID as the build environment variable `GOOGLE_CLIENT_ID` in the Cloudflare project (Settings → Variables), and in `config.local.json` for local development.
 6. Decide the publishing status. Testing mode limits sign-in to listed test users and may make approvals expire after 7 days; publishing without verification shows a one-time "unverified app" warning for some permissions. **To confirm in the setup spike** for `drive.file` and `drive`.
 
 ### 16.5 Drive adapter mechanics
@@ -608,15 +608,17 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 | D17 | Search engine: official SQLite WebAssembly build with FTS5, using the `opfs-sahpool` storage mode (works without special server headers); fallback MiniSearch if Spike 0 fails |
 | D18 | Drive scope: `drive.file` for v1 (provisional; reversible without data changes), with a picker-based "import from inbox" step (§20.9) |
 | D19 | Before real implementation, Spike 0 (a throwaway test app) verifies on the actual devices: OAuth behavior per scope and publishing status; iOS persistent storage; SQLite/OPFS on Safari and the Boox; pdf.js speed on the Boox; Shortcut → Drive capture; bookmarklet capture size |
+| D20 | **Hosting: Cloudflare.** Register `mayalib.org` with Cloudflare Registrar and serve the app from Cloudflare (Pages, or Workers static assets) via its GitHub integration: every push to `main` builds and publishes. **Rationale:** (1) MayaLib gets its own origin from day one (`*.pages.dev`, then `mayalib.org`), whereas GitHub Pages without a custom domain shares `ericdomeshek.github.io` with every Pages site on the account, which could then read MayaLib's storage and tokens; (2) Cloudflare can send HTTP security headers (`_headers`), notably a full Content Security Policy for an app that holds Drive access, which GitHub Pages cannot; (3) the registrar sells at cost, with the same price at renewal; (4) registration, DNS and hosting in one place, plus preview builds per branch and unmetered bandwidth for static files. **Accepted costs:** one more vendor and account (its GitHub app is limited to this repository); a Cloudflare-registered domain must use Cloudflare DNS. **Exit path:** the app is plain static files and the host never sees library data, so moving to GitHub Pages or another host is a configuration change (devices reinstall and rebuild caches; update the OAuth allowed origins). **Expected cost:** ~$11/yr for the domain (at-cost `.org`); hosting $0 on the free plan (static requests unlimited; 500 builds/month). |
+| D21 | **UI: Preact + TypeScript + Vite.** Chosen for a small runtime (suits the e-ink Boox), React's widely understood component style (low stranding risk; large pool of examples and compatible libraries), and fluency of tooling and assistants. The UI stays a thin layer over framework-independent TypeScript modules (format, sync, storage, search, citations), so it remains replaceable. PWA tooling: `vite-plugin-pwa` (to confirm in Spike 0). |
 
 ## 20. Open questions
 
-1. **Implementation substrate:** the platform is now constrained to a web codebase (§3.1–3.3). Search engine decided (D17). Still open: UI framework (candidates: Preact, Svelte 5, Lit) and build tooling (Vite assumed).
+1. ~~**Implementation substrate:**~~ *Resolved: web codebase (§3.1–3.3); search engine D17; Preact + TypeScript + Vite D21.*
 2. ~~**Shared index:**~~ *Resolved: D14 (postponed to v2).* is the range-read SQLite approach worth its complexity, compared with relying on `remoteSearch` plus local indexes? Prototype both before committing.
 3. ~~**Storage quota:**~~ *Resolved: D16.* what to do when source files outgrow the free 15 GB (shared with Gmail and Photos)? Options: a paid tier, keeping very large scans outside the library, or keeping text only for some items.
 4. ~~**Indexer device:**~~ *Resolved: D14 (not needed in v1).* what happens when the Mac is offline for long periods? Can another device take over, and how is that handed off?
 5. ~~**Resolving names to entities:**~~ *Resolved: D15.* how much to automate (OpenAlex matching) versus confirm by hand.
 6. **Web capture on iOS** (to verify in Spike 0, D19): confirm that a Shortcut can write to the Google Drive location in Files, and how large a page it and a bookmarklet can serialize.
 7. **Persistent storage on iOS** (to verify in Spike 0, D19): confirm the effective quota and that persistent storage is honored for Home Screen apps on current iOS.
-8. **Static host and address.** Note: GitHub Pages without a custom domain shares the origin `<user>.github.io` with all of that user's Pages sites, which could then read MayaLib's storage and tokens, so MayaLib needs its own origin (a custom domain, or Cloudflare Pages' `*.pages.dev`). A custom domain must be kept renewed: if it lapses and someone else registers it, their code would inherit the origin, so remove it from the OAuth allowed origins immediately. Hosting options for the app code: GitHub Pages (with a custom domain), Cloudflare Pages, Firebase Hosting. The address must be stable because browser storage and the OAuth setup are tied to it. Free GitHub Pages requires a public repository, which is acceptable since the code contains no secrets (an OAuth client ID is public by design); Cloudflare Pages also serves private repositories.
+8. ~~**Static host and address:**~~ *Resolved: D20 (Cloudflare; `mayalib.org`). Keep the domain on auto-renew with registrar lock; if it is ever lost, remove it from the OAuth allowed origins and revoke MayaLib's access immediately.*
 9. **Drive permission scope** (provisionally `drive.file`, D18; confirm in Spike 0): `drive.file` (the narrowest: only files MayaLib created or that the user picks; files arriving by other routes, such as the iOS Shortcut, Boox exports or the Mac's Drive folder, must be imported through the Google Picker) versus `drive` (full Drive access: those routes work directly, and the Mac could use the Drive for desktop folder; costs: broad access, plus a one-time "unverified app" warning). Leaning `drive.file` for v1 with a picker-based "import from inbox" step. To confirm in a setup spike: token and consent behavior for an unverified personal-use app.
