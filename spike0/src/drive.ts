@@ -35,11 +35,18 @@ export function loadGis(): Promise<void> {
   }));
 }
 
-/** Ask Google for an access token. prompt '' = silent if possible; 'consent' = always show the consent screen. */
-export async function requestToken(scope: ScopeName, prompt: '' | 'consent' | 'select_account'): Promise<Token> {
-  await loadGis();
+/**
+ * Ask Google for an access token via the pop-up flow. prompt '' = silent if possible; 'consent' = always ask.
+ * Must be called synchronously from a tap: Safari blocks pop-ups opened after any await, so the
+ * Google script is preloaded (loadGis on page load) and nothing here awaits before the pop-up opens.
+ */
+export function requestToken(scope: ScopeName, prompt: '' | 'consent' | 'select_account'): Promise<Token> {
+  if (!window.google?.accounts) {
+    loadGis();
+    return Promise.reject(new Error('Google sign-in script not loaded yet; wait a moment and tap again'));
+  }
   const id = clientId();
-  if (!id) throw new Error('No OAuth client ID configured');
+  if (!id) return Promise.reject(new Error('No OAuth client ID configured'));
   return new Promise((resolve, reject) => {
     const client = window.google!.accounts.oauth2.initTokenClient({
       client_id: id,
@@ -57,6 +64,52 @@ export async function requestToken(scope: ScopeName, prompt: '' | 'consent' | 's
     });
     client.requestAccessToken({ prompt });
   });
+}
+
+// ---- Redirect flow (no pop-up): for Home Screen apps, where pop-ups can't report back. ----
+// OAuth 2.0 implicit grant for browser apps: the whole window goes to Google, which redirects back
+// to the app with the token in the URL fragment. Needs the redirect URI registered on the client.
+
+const REDIRECT_KEY = 'spike0.oauthRedirect';
+
+export function redirectUri(): string {
+  return `${location.origin}/`;
+}
+
+export function startRedirect(scope: ScopeName, prompt: 'consent' | 'none' | 'select_account'): void {
+  const id = clientId();
+  if (!id) throw new Error('No OAuth client ID configured');
+  const state = crypto.getRandomValues(new Uint32Array(4)).join('-');
+  localStorage.setItem(REDIRECT_KEY, JSON.stringify({ state, scope, startedAt: Date.now() }));
+  const p = new URLSearchParams({
+    client_id: id,
+    redirect_uri: redirectUri(),
+    response_type: 'token',
+    scope: SCOPES[scope],
+    include_granted_scopes: 'true',
+    state,
+    prompt,
+  });
+  location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${p}`);
+}
+
+/** Call once at startup: if Google redirected back with a token (or an error), consume it. */
+export function completeRedirect(): { ok: boolean; detail: string; elapsedMs?: number } | null {
+  if (!location.hash.includes('access_token=') && !location.hash.includes('error=')) return null;
+  const h = new URLSearchParams(location.hash.slice(1));
+  history.replaceState(null, '', location.pathname + location.search); // drop the token from the URL
+  const saved = JSON.parse(localStorage.getItem(REDIRECT_KEY) ?? 'null') as { state: string; scope: string; startedAt: number } | null;
+  localStorage.removeItem(REDIRECT_KEY);
+  const elapsedMs = saved ? Date.now() - saved.startedAt : undefined;
+  if (!saved || h.get('state') !== saved.state) return { ok: false, detail: 'state mismatch (ignored)', elapsedMs };
+  if (h.get('error')) return { ok: false, detail: `${h.get('error')}: ${h.get('error_description') ?? ''}`, elapsedMs };
+  token = {
+    accessToken: h.get('access_token') ?? '',
+    expiresAt: Date.now() + Number(h.get('expires_in') ?? 0) * 1000,
+    scope: h.get('scope') ?? '',
+  };
+  tokenListeners.forEach((l) => l());
+  return { ok: true, detail: `granted: ${token.scope}`, elapsedMs };
 }
 
 /** Revoke the grant at Google. Rejects if Google (or the browser) reports a failure. */

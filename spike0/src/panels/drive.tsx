@@ -16,6 +16,17 @@ export function DrivePanel() {
 
   useEffect(() => D.onToken(() => setTick((t) => t + 1)), []);
 
+  // Preload Google's script so the pop-up can open synchronously on tap (Safari's pop-up rule),
+  // and pick up a token if we've just come back from the redirect flow.
+  useEffect(() => {
+    if (D.clientId()) D.loadGis().catch((e) => say(`✘ ${errText(e)}`));
+    const r = D.completeRedirect();
+    if (r) {
+      record(P, 'token_redirect', { ok: r.ok, detail: r.detail, roundTripMs: r.elapsedMs ?? null });
+      say(`${r.ok ? '✔' : '✘'} token_redirect (${r.elapsedMs ?? '?'} ms round trip): ${r.detail}`);
+    }
+  }, []);
+
   const say = (s: string) => setLog((l) => [...l, `${new Date().toLocaleTimeString()}  ${s}`]);
 
   async function step<T extends Json>(name: string, fn: () => Promise<T>): Promise<T | undefined> {
@@ -107,7 +118,8 @@ export function DrivePanel() {
       <h2>2. Google sign-in &amp; Drive</h2>
       <p class="muted">
         Tests sign-in, then creates a folder “{D.FOLDER_NAME}” in your Drive and reads/writes test files in it.
-        Try both scopes (revoke between them). To test whether files added outside MayaLib are visible: put any file
+        Try both scopes (revoke between them). “Connect (consent)” uses a pop-up; “Connect (redirect)” sends this
+        whole window to Google and back, for Home Screen apps where pop-ups fail. To test whether files added outside MayaLib are visible: put any file
         into that folder using the Drive app or the iOS Files app, then tap “List folder again”.
       </p>
       {!configured && (
@@ -132,6 +144,8 @@ export function DrivePanel() {
       <div class="row">
         <button disabled={busy || !configured} onClick={() => connect('consent')}>Connect (consent)</button>
         <button disabled={busy || !configured} onClick={() => connect('')}>Renew silently</button>
+        <button disabled={busy || !configured} onClick={() => { record(P, 'scopeRequested', scope); D.startRedirect(scope, 'consent'); }}>Connect (redirect)</button>
+        <button disabled={busy || !configured} onClick={() => { record(P, 'scopeRequested', scope); D.startRedirect(scope, 'none'); }}>Renew (redirect)</button>
         <button disabled={busy || !token} onClick={runAll}>Run Drive tests</button>
         <button disabled={busy || !token} onClick={listOnly}>List folder again</button>
         <button disabled={busy || !token} onClick={searchAgain}>Search again</button>

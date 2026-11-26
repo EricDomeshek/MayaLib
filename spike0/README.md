@@ -41,7 +41,7 @@ Deployed as a Cloudflare **Worker with static assets**, built by Workers Builds 
 | **Build** variables (Settings → Build → Variables and secrets) | `GOOGLE_CLIENT_ID` = your client ID; `NODE_VERSION` = `22` |
 | Custom domain (Domains tab → Add Domain, Production) | `app.mayalib.org` |
 
-`GOOGLE_CLIENT_ID` must be a **build** variable: runtime variables are invisible to the build. After changing it, retry the latest build. In the Google Cloud OAuth client, the allowed JavaScript origins must include `https://app.mayalib.org` (and `http://localhost:5173` for local runs).
+`GOOGLE_CLIENT_ID` must be a **build** variable: runtime variables are invisible to the build. After changing it, retry the latest build. In the Google Cloud OAuth client, the allowed JavaScript origins must include `https://app.mayalib.org` (and `http://localhost:5173` for local runs). For the **Connect (redirect)** button, the **Authorized redirect URIs** must also include `https://app.mayalib.org/` (and `http://localhost:5173/`), with the trailing slash.
 
 ## Test protocol
 
