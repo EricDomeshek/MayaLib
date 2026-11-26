@@ -670,5 +670,7 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 
 - **Highlights on iPad:** finger selection over pdf.js's text layer works, but **tapping a button clears the selection before the button's handler runs** (standard iOS behavior), so "Save highlight" found nothing. **Implication:** the reader must capture the selection as it changes (`selectionchange`) and act on the remembered range, or offer highlighting from a gesture or menu that doesn't take focus. Fixed in the spike by remembering the last selection.
 
+- **Tap mode** (tap first and last word instead of dragging) still did not respond on the iPad after two fixes; cause unknown. Native press-and-drag selection works there, so **native selection is the primary highlighting method**. Tap-to-select is dropped unless Boox testing shows native selection is unusable on e-ink.
+
 **Still to run:** Google Picker import under `drive.file`; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
 
