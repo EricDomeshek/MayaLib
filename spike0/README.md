@@ -10,6 +10,7 @@ A **throwaway** Preact app that checks, on your actual Mac, iPhone and Boox, the
 | 2. Google sign-in & Drive | Sign-in with `drive.file` vs `drive`; silent renewal; testing vs published mode; folder/file create, read-back, **range reads**, conditional update, **change feed**, Drive full-text search; whether files added **outside** MayaLib are visible | §16, §20.9 |
 | 3. SQLite full-text search | Official SQLite WASM + FTS5 in OPFS (`opfs-sahpool`): loads? persists across restarts? insert and search speed | D17 |
 | 4. PDF | pdf.js open/render/extract speed, especially on the Boox | §3.3 |
+| 4b. Highlights | Cost of pdf.js's selectable text layer; whether selecting text by touch is usable (with a **Tap mode** fallback: tap first word, tap last word); whether a highlight saved as page + quote + surrounding text is found and redrawn after reopening | §8, §12 |
 | 5. Web-page capture | Bookmarklet capture (incl. pages behind your subscriptions) and the iOS Shortcut → Drive route | §9.2, §20.6 |
 | 6. Report | Collects everything as JSON to copy/download and send back | — |
 
@@ -51,6 +52,7 @@ Do this on **each device** (Mac browser, iPhone Home Screen app, Boox installed 
 4. **Section 2 (full scope):** *Revoke*, switch the scope to `drive (full)`, and repeat step 3. Note any warning screens.
 5. **Section 3:** *Start* → *Add docs* (2,000) → *Search*. Fully close the app, reopen, *Start* again: `existingRows` should be unchanged. On the Mac, also try 10,000.
 6. **Section 4:** open a typical paper PDF, then a large scanned one.
+   **Section 4b:** open a text-based paper. Select a passage with your finger (or mouse) and tap *Save highlight*. Then turn on *Tap mode* and highlight another passage by tapping its first and last words. Note which method is easier on each device. Close the app, reopen, open the same PDF: both highlights should reappear in the same places.
 7. **Section 5:** install the bookmarklet, capture two or three pages (one behind a subscription), *Refresh*, and *Upload to Drive* one of them. On iPhone, also try a Shortcut that saves into the Drive folder.
 8. **Section 6:** add a note naming the device, then copy or download the report.
 9. **Later checks:** reopen the app after ~3 days and again after **8+ days of non-use**. Check the survival markers in section 1 and whether *Renew silently* in section 2 still works without a consent screen (Google's testing mode may expire approvals after 7 days).
