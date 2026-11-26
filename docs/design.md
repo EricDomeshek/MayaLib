@@ -506,6 +506,7 @@ restriction:
 
 Drive supplies `storage`, `rangeRead` and `remoteSearch`, and keeps file revisions as a last-resort undo. Every one of these has a replacement (§4).
 
+- **Deployment configuration:** the OAuth client ID identifies a *deployment* (an app registration in a Google Cloud project), not a user, and the user's Drive account is unrelated to it. It is never committed. It is injected at build time from a GitHub Actions variable (or an uncommitted `config.local.json` for local development) into the deployed `config.json`. It is unavoidably visible in the deployed app and in sign-in requests; this is normal for browser OAuth clients. Forks register their own Cloud project and client ID. Optionally, use a dedicated Google account and contact email for the Cloud project, since the consent screen shows them.
 - **Authorization:** OAuth via Google Identity Services with the `drive.file` scope. Publish the OAuth app to production with only this scope (to confirm during setup: this avoids the 7-day token expiry of testing mode).
 - **Paths ↔ IDs:** a cached path→ID map. Duplicate names in one folder are surfaced as conflicts.
 - **Conditional writes:** emulated by checking the file's current version and then writing.
@@ -555,6 +556,7 @@ Drive supplies `storage`, `rangeRead` and `remoteSearch`, and keeps file revisio
 | D10 | No paid Apple developer account. The iPhone version is a PWA, and every feature must work in the plain PWA on iOS |
 | D11 | Native or wrapped shells are optional enhancements (Android and macOS only), implemented as alternative providers |
 | D12 | Device-local data is a cache. Unsent changes are the only data at risk, so they are uploaded immediately and shown while pending |
+| D13 | No account-related identifiers in the repository. The OAuth client ID is per-deployment configuration injected at build time |
 
 ## 20. Open questions
 
