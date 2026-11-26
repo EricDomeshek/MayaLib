@@ -26,21 +26,34 @@ interface PageState {
 }
 
 // Map a DOM position inside the text layer to an offset in pageText.
+// Selections can also end on an element boundary (e.g. the text-layer div itself, or a <br>
+// at a line end, as when a drag runs to the end of a line); map those to the nearest run.
 function toOffset(ps: PageState, node: Node, offset: number): number | null {
-  const el = node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement);
-  const i = ps.textDivs.findIndex((d) => d === el || d.contains(el));
-  if (i < 0) return null;
-  return ps.starts[i] + (node.nodeType === Node.TEXT_NODE ? offset : 0);
+  if (node.nodeType === Node.TEXT_NODE) {
+    const i = ps.textDivs.findIndex((d) => d.contains(node));
+    return i < 0 ? null : ps.starts[i] + offset;
+  }
+  const el = node as Element;
+  const own = ps.textDivs.findIndex((d) => d === el || d.contains(el));
+  if (own >= 0) return ps.starts[own] + (offset > 0 ? (ps.textDivs[own].textContent?.length ?? 0) : 0);
+  // Boundary between children of a container: use the first run at or after that child.
+  const child = el.childNodes[offset] ?? null;
+  for (let n: Node | null = child; n; n = n.nextSibling) {
+    const i = ps.textDivs.findIndex((d) => d === n || (n as Element).contains?.(d));
+    if (i >= 0) return ps.starts[i];
+  }
+  return el.closest?.('.textLayer') || el.querySelector?.('.textLayer') ? ps.pageText.length : null;
 }
 
 // Map an offset in pageText back to a DOM position.
+// pdf.js emits empty runs at line ends (no text node, and sharing their start offset with the
+// following run), so skip runs without text; an offset at the very end of a run, or in a
+// virtual separator, maps to the end of the preceding non-empty run.
 function toDom(ps: PageState, off: number): [Node, number] | null {
   for (let i = ps.textDivs.length - 1; i >= 0; i--) {
-    if (ps.starts[i] <= off) {
-      const t = ps.textDivs[i].firstChild;
-      if (!t) return null;
-      return [t, Math.min(off - ps.starts[i], t.textContent?.length ?? 0)];
-    }
+    const t = ps.textDivs[i].firstChild;
+    if (!t || t.nodeType !== Node.TEXT_NODE || !t.textContent) continue;
+    if (ps.starts[i] <= off) return [t, Math.min(off - ps.starts[i], t.textContent.length)];
   }
   return null;
 }
@@ -210,6 +223,9 @@ export function PdfTextPanel() {
     let e = toOffset(st, r.endContainer, r.endOffset);
     if (s === null || e === null) { say('Selection is outside the page text.'); return; }
     if (e < s) [s, e] = [e, s];
+    // Trim whitespace (including virtual separators) from both ends of the selection.
+    while (s < e && /\s/.test(st.pageText[s])) s++;
+    while (e > s && /\s/.test(st.pageText[e - 1])) e--;
     const quote = st.pageText.slice(s, e);
     if (!quote.trim()) { say('Empty selection.'); return; }
     const h: Highlight = {
