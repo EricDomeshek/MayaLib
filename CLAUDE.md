@@ -26,7 +26,7 @@ MayaLib is a lightweight, portable reading assistant for academic research (init
 
 - **UI:** Preact + TypeScript + Vite (D21). Keep the UI a thin layer over framework-independent TypeScript modules (format, sync, storage, search, citations).
 - **Search:** official SQLite WebAssembly build with FTS5, `opfs-sahpool` storage mode (D17).
-- **Hosting:** Cloudflare (Pages or Workers static assets), built from `main` through its GitHub integration; domain `mayalib.org` (D20). The OAuth client ID is a Cloudflare build environment variable, never a committed file.
+- **Hosting:** Cloudflare Worker with static assets, built from `main` through Workers Builds' GitHub integration; app served at `app.mayalib.org` (domain `mayalib.org`, D20). The OAuth client ID is a Cloudflare build environment variable, never a committed file.
 
 ## Still provisional — ask before changing
 

@@ -30,17 +30,18 @@ The client ID can also be pasted into section 2 at runtime (stored on that devic
 
 ## Deploy on Cloudflare (for iPhone and Boox)
 
-Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git** → choose `EricDomeshek/MayaLib` only, then:
+Deployed as a Cloudflare **Worker with static assets**, built by Workers Builds from this repository:
 
 | Setting | Value |
 |---|---|
-| Production branch | `main` |
+| Git repository / branch | `EricDomeshek/MayaLib`, `main` (Cloudflare GitHub app limited to this repository) |
 | Root directory | `spike0` |
 | Build command | `npm run build` |
-| Build output directory | `dist` |
-| Environment variables | `GOOGLE_CLIENT_ID` = your client ID; `NODE_VERSION` = `22` |
+| Deploy command | `npx wrangler deploy` (default) |
+| **Build** variables (Settings → Build → Variables and secrets) | `GOOGLE_CLIENT_ID` = your client ID; `NODE_VERSION` = `22` |
+| Custom domain (Domains tab → Add Domain, Production) | `app.mayalib.org` |
 
-Then **Custom domains → add `mayalib.org`**. In the Google Cloud OAuth client, the allowed JavaScript origins must include `https://mayalib.org` (and `http://localhost:5173` for local runs).
+`GOOGLE_CLIENT_ID` must be a **build** variable: runtime variables are invisible to the build. After changing it, retry the latest build. In the Google Cloud OAuth client, the allowed JavaScript origins must include `https://app.mayalib.org` (and `http://localhost:5173` for local runs).
 
 ## Test protocol
 
