@@ -658,5 +658,10 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 - **Full-text search:** a file uploaded ~8 minutes earlier was found (1 hit); one uploaded seconds earlier was not. Drive's indexing lag is minutes, so `remoteSearch` can never be relied on for just-written files (local search covers those).
 - **Changes feed lag reproduced:** again the 1 MB file uploaded just before polling was missing from the feed.
 
+**Third run: deployed at `app.mayalib.org` (Safari, Mac).**
+- The deployment works end to end. The Worker applies the `_headers` Content Security Policy, the service worker takes control, the build-time client ID is present, and sign-in and all Drive operations succeed.
+- **Granted permissions accumulate.** With `drive.file` requested, the token came back with both `drive.file` and `drive`, because the full-Drive grant from the earlier test had not been revoked. Google returns previously granted scopes for the same client and account, on any device or address. Implications: (1) to test `drive.file` behavior, revoke first; (2) the real app must check the granted scopes rather than assume it holds only what it asked for. It should show which access it holds and offer to revoke broader access it no longer needs. Requesting with `include_granted_scopes: false` may limit the token to the requested scope (to verify).
+- Drive's `version` jumped from 1 to 3 across a single content update, and the changes feed again missed the just-uploaded 1 MB file. Both earlier findings are confirmed.
+
 **Still to run:** Google Picker import under `drive.file`; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
 
