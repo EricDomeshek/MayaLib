@@ -100,6 +100,9 @@ export function PdfTextPanel() {
   const docKey = useRef('');
   const ps = useRef<PageState | null>(null);
   const tapStart = useRef<number | null>(null);
+  // Last non-empty selection on the page, captured as it changes. iOS clears the selection when a
+  // button is tapped, before the button's handler runs, so Save highlight falls back to this.
+  const lastSel = useRef<{ s: number; e: number; page: number; at: number } | null>(null);
   const [pageNo, setPageNo] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [highlights, setHighlightsState] = useState<Highlight[]>([]);
@@ -129,6 +132,7 @@ export function PdfTextPanel() {
     setPageNo(n);
     tapStart.current = null;
     ps.current = null;
+    lastSel.current = null;
     const host = wrap.current;
     host.innerHTML = '';
     if (overlay.current) overlay.current.innerHTML = '';
@@ -219,6 +223,31 @@ export function PdfTextPanel() {
   // Re-draw when the page or the highlight list changes.
   useEffect(() => { drawHighlights(); }, [highlights, pageNo]);
 
+  // Convert the current DOM selection to pageText offsets, or explain why it can't be.
+  function selectionOffsets(st: PageState): { s: number; e: number } | string | null {
+    const sel = getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null;
+    const r = sel.getRangeAt(0);
+    const s = toOffset(st, r.startContainer, r.startOffset);
+    const e = toOffset(st, r.endContainer, r.endOffset);
+    if (s === null || e === null) {
+      const d = (n: Node) => n.nodeType === Node.TEXT_NODE ? `text in <${n.parentElement?.tagName.toLowerCase()} class="${n.parentElement?.className}">` : `<${(n as Element).tagName?.toLowerCase()} class="${(n as Element).className}">`;
+      return `Selection is outside the page text (start: ${d(r.startContainer)} @${r.startOffset}; end: ${d(r.endContainer)} @${r.endOffset}).`;
+    }
+    return s <= e ? { s, e } : { s: e, e: s };
+  }
+
+  useEffect(() => {
+    const onSel = () => {
+      const st = ps.current;
+      if (!st) return;
+      const o = selectionOffsets(st);
+      if (o && typeof o !== 'string' && o.e > o.s) lastSel.current = { ...o, page: st.page, at: Date.now() };
+    };
+    document.addEventListener('selectionchange', onSel);
+    return () => document.removeEventListener('selectionchange', onSel);
+  }, []);
+
   async function saveFromSelection(method: 'native' | 'tap') {
     try { await saveInner(method); } catch (e) { say(`✘ saving failed: ${errText(e)}`); record(P, 'saveError', errText(e)); }
   }
@@ -227,15 +256,20 @@ export function PdfTextPanel() {
     const st = ps.current;
     const sel = getSelection();
     if (!st) { say('Page not ready yet (text layer still loading).'); return; }
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { say('Select some text on the page first.'); return; }
-    const r = sel.getRangeAt(0);
-    let s = toOffset(st, r.startContainer, r.startOffset);
-    let e = toOffset(st, r.endContainer, r.endOffset);
-    if (s === null || e === null) {
-      const d = (n: Node) => n.nodeType === Node.TEXT_NODE ? `text in <${n.parentElement?.tagName.toLowerCase()} class="${n.parentElement?.className}">` : `<${(n as Element).tagName?.toLowerCase()} class="${(n as Element).className}">`;
-      say(`Selection is outside the page text (start: ${d(r.startContainer)} @${r.startOffset}; end: ${d(r.endContainer)} @${r.endOffset}).`);
-      return;
+    let source = 'live selection';
+    let o = selectionOffsets(st);
+    if (typeof o === 'string') { say(o); return; }
+    if (!o) {
+      const last = lastSel.current;
+      if (last && last.page === st.page && Date.now() - last.at < 120_000) {
+        o = { s: last.s, e: last.e };
+        source = 'remembered selection (the tap cleared the live one)';
+      } else {
+        say('Select some text on the page first.');
+        return;
+      }
     }
+    let { s, e } = o;
     if (e < s) [s, e] = [e, s];
     // Trim whitespace (including virtual separators) from both ends of the selection.
     while (s < e && /\s/.test(st.pageText[s])) s++;
@@ -243,7 +277,7 @@ export function PdfTextPanel() {
     const quote = st.pageText.slice(s, e);
     if (!quote.trim()) { say(`Empty selection (offsets ${s}–${e}).`); return; }
     const h: Highlight = {
-      id: `${Date.now()}`, page: pageNo, quote,
+      id: `${Date.now()}`, page: st.page, quote,
       prefix: st.pageText.slice(Math.max(0, s - CONTEXT), s),
       suffix: st.pageText.slice(e, e + CONTEXT),
       method, createdAt: new Date().toISOString(),
@@ -251,9 +285,10 @@ export function PdfTextPanel() {
     const next = [...hlRef.current, h];
     await kvSet(docKey.current, next);
     setHighlights(next);
-    sel.removeAllRanges();
-    say(`Saved highlight (${method}): “${quote.slice(0, 80)}${quote.length > 80 ? '…' : ''}”`);
-    record(P, `saved_${h.id}`, { page: h.page, chars: quote.length, method });
+    sel?.removeAllRanges();
+    lastSel.current = null;
+    say(`Saved highlight (${method}, from ${source}): “${quote.slice(0, 80)}${quote.length > 80 ? '…' : ''}”`);
+    record(P, `saved_${h.id}`, { page: h.page, chars: quote.length, method, source });
   }
 
   // Tap mode: tap the first word, then the last word; MayaLib builds the selection.

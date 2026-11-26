@@ -668,5 +668,7 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 - **Home Screen app:** after the consent screen, Google showed **HTTP 400 "malformed request"**. Likely cause: Google's pop-up sign-in hands the token back to the window that opened the pop-up, and in an iOS Home Screen app the pop-up opens in a separate browser panel that can't report back. **Implication:** on iOS, the Home Screen app must sign in by *redirect* (send the whole window to Google and back; OAuth implicit grant with a registered redirect URI). Added to the spike as **Connect (redirect)**; to verify on the iPad and iPhone.
 - **Safari tab:** `popup_failed_to_open`. The spike awaited the loading of Google's script before opening the pop-up, and Safari only allows pop-ups opened directly from a tap. **Implication:** preload Google's script and open the pop-up synchronously in the tap handler. Fixed in the spike.
 
+- **Highlights on iPad:** finger selection over pdf.js's text layer works, but **tapping a button clears the selection before the button's handler runs** (standard iOS behavior), so "Save highlight" found nothing. **Implication:** the reader must capture the selection as it changes (`selectionchange`) and act on the remembered range, or offer highlighting from a gesture or menu that doesn't take focus. Fixed in the spike by remembering the last selection.
+
 **Still to run:** Google Picker import under `drive.file`; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
 
