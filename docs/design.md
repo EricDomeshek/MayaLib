@@ -2,7 +2,7 @@
 
 *Status: draft for review · Last updated 2026-11-25*
 
-**Since Draft 3:** decisions D14–D21 resolve most open questions: Spike 0 defined (D19); hosting on Cloudflare at `mayalib.org` (D20); UI in Preact (D21).
+**Since Draft 3:** first Spike 0 findings (§21); decisions D14–D21 resolve most open questions: Spike 0 defined (D19); hosting on Cloudflare at `mayalib.org` (D20); UI in Preact (D21).
 
 **Changes from Draft 2:** platform targets and distribution with no paid Apple developer account (§3.1); web storage and retention limits (§3.2); native and wrapped options considered (§3.3); per-device storage budgets (§5.5).
 
@@ -622,3 +622,35 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 7. **Persistent storage on iOS** (to verify in Spike 0, D19): confirm the effective quota and that persistent storage is honored for Home Screen apps on current iOS.
 8. ~~**Static host and address:**~~ *Resolved: D20 (Cloudflare; `mayalib.org`). Keep the domain on auto-renew with registrar lock; if it is ever lost, remove it from the OAuth allowed origins and revoke MayaLib's access immediately.*
 9. **Drive permission scope** (provisionally `drive.file`, D18; confirm in Spike 0): `drive.file` (the narrowest: only files MayaLib created or that the user picks; files arriving by other routes, such as the iOS Shortcut, Boox exports or the Mac's Drive folder, must be imported through the Google Picker) versus `drive` (full Drive access: those routes work directly, and the Mac could use the Drive for desktop folder; costs: broad access, plus a one-time "unverified app" warning). Leaning `drive.file` for v1 with a picker-based "import from inbox" step. To confirm in a setup spike: token and consent behavior for an unverified personal-use app.
+
+## 21. Spike 0 findings
+
+### 21.1 Mac, Safari 26 (browser tab, not installed), 2026-11-26
+
+**Drive with `drive.file`: everything worked.**
+
+| Operation | Result | Time |
+|---|---|---|
+| Consent and token | granted `drive.file`; token valid 60 min | (interactive) |
+| Create folder | ✓ | 1.3 s |
+| Upload 24 KB text / 1 MB binary | ✓ / ✓ | 1.2 s / 1.1 s |
+| Read back | content identical | 0.4 s |
+| Range read (bytes 0–99) | HTTP 206, 100 bytes | 0.25 s |
+| Conditional update (check, then write) | ✓; `headRevisionId` changed | 1.25 s |
+| Changes feed | ✓, but see below | 0.24 s |
+| List folder | both files listed immediately | 0.23 s |
+| Full-text search | 0 hits immediately after upload (indexing lag; re-check pending) | 0.47 s |
+
+**Implications for the Drive adapter (§16.5):**
+- **Use `headRevisionId` (or `md5Checksum`) as the adapter's `version`, not Drive's `version` field.** `version` jumped from 1 to 2 between upload and the next read with no content change. It counts any change to the file, including metadata, so it would cause false conflicts.
+- **The changes feed lags.** Polled within about a second, it reported the test file and the folder but not the 1 MB file uploaded just before. Sync must treat the feed as eventually consistent: keep polling, and never assume it is complete immediately after a write. Folder listings were immediately consistent.
+- **`Content-Range` is not readable from the browser** (CORS doesn't expose it), so range readers must take the total file size from file metadata (`size`), not the response header.
+- Each write takes about 1–1.3 s. Batch operations (bootstrap, imports) need parallel uploads and progress reporting.
+
+**Other sections:**
+- Storage quota offered to the tab was ~82 GB; persistent storage was not yet requested.
+- The bookmarklet captured a public page (126 KB HTML) and delivered it in 0.3 s.
+- SQLite search, PDF rendering and highlights (4b) worked on the Mac, after the 4b fixes for line-end highlights.
+
+**Still to run:** full `drive` scope and visibility of files added outside MayaLib; full-text search after indexing; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
+
