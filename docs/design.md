@@ -652,5 +652,11 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 - The bookmarklet captured a public page (126 KB HTML) and delivered it in 0.3 s.
 - SQLite search, PDF rendering and highlights (4b) worked on the Mac, after the 4b fixes for line-end highlights.
 
-**Still to run:** full `drive` scope and visibility of files added outside MayaLib; full-text search after indexing; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
+**Second run, same day: full `drive` scope and outside files.**
+- **Files added outside MayaLib:** a PDF dropped into the spike folder through the Drive website was **not listed under `drive.file`** (as expected) and **was listed under `drive`**. This confirms the trade-off behind D18. Under `drive.file`, such files need an explicit import through the Google Picker. The Picker also needs a Google API key ("developer key") in addition to the OAuth client ID: deployment configuration (§16.3), restricted to the app's origins. The Picker flow is not yet tested.
+- **`drive` scope:** consent and every operation worked, at the same speeds as `drive.file`.
+- **Full-text search:** a file uploaded ~8 minutes earlier was found (1 hit); one uploaded seconds earlier was not. Drive's indexing lag is minutes, so `remoteSearch` can never be relied on for just-written files (local search covers those).
+- **Changes feed lag reproduced:** again the 1 MB file uploaded just before polling was missing from the feed.
+
+**Still to run:** Google Picker import under `drive.file`; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
 
