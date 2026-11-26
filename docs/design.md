@@ -2,7 +2,7 @@
 
 *Status: draft for review · Last updated 2026-11-26*
 
-**Since Draft 3:** first Spike 0 findings (§21); decisions D14–D21 resolve most open questions: Spike 0 defined (D19); hosting on Cloudflare at `app.mayalib.org` (D20); UI in Preact (D21). UX/UI design begun: one app everywhere (§2, D22).
+**Since Draft 3:** first Spike 0 findings (§21); decisions D14–D21 resolve most open questions: Spike 0 defined (D19); hosting on Cloudflare at `app.mayalib.org` (D20); UI in Preact (D21). UX/UI design begun (§22): one app everywhere (D22); navigation shell with four modes (D23); vocabulary and several libraries per user (D24, §7); meetings as events (D25); collections auto-built from syllabi and reference lists (D26, §14).
 
 **Changes from Draft 2:** platform targets and distribution with no paid Apple developer account (§3.1); web storage and retention limits (§3.2); native and wrapped options considered (§3.3); per-device storage budgets (§5.5).
 
@@ -291,6 +291,8 @@ indexer: mac-work-01                 # device that builds _index/
 
 An app that finds a `formatVersion` newer than it understands opens the library read-only.
 
+**Several libraries.** A user may keep several libraries, typically one per area of interest (e.g. economics, woodworking, personal finance), each a separate top-level folder with its own `libraryId`, taxonomies and templates. One library is open at a time; the user switches from the header (§22.2). There are no links or searches across libraries. Device-local data (caches, indexes, outbox) is keyed by `libraryId`, and content budgets (§5.5) apply per library on each device.
+
 ## 8. Identifiers and taxonomies
 
 ### 8.1 Identifiers
@@ -320,8 +322,8 @@ Rules: an `id` never changes; `core:` terms ship with MayaLib and `my:` terms ar
 
 ### 8.3 Initial taxonomies
 
-- **Item types:** publication (`article`, `working-paper`, `book`, `chapter`, `edited-volume`, `report`, `thesis`, `review`), `webpage` (`blog-post`, `news-article`, `policy-brief`), event (`talk`, `conference-session`, `lecture`), resource (`dataset`, `replication-package`, `software`, `media`), own work (`draft`, `slides`, `referee-report`, `discussion`)
-- **Entity types (§10):** `person`, organization (`university`, `department`, `institute`, `central-bank`, `government-agency`, `publisher`), venue (`journal`, `working-paper-series`, `conference-series`), `event` (`conference`, `workshop`, `seminar`)
+- **Item types:** publication (`article`, `working-paper`, `book`, `chapter`, `edited-volume`, `report`, `thesis`, `review`), `webpage` (`blog-post`, `news-article`, `policy-brief`), event (`talk`, `conference-session`, `lecture`), resource (`dataset`, `replication-package`, `software`, `media`, `syllabus`), own work (`draft`, `slides`, `referee-report`, `discussion`)
+- **Entity types (§10):** `person`, organization (`university`, `department`, `institute`, `central-bank`, `government-agency`, `publisher`), venue (`journal`, `working-paper-series`, `conference-series`), `event` (`conference`, `workshop`, `seminar`, `meeting` (`lunch`, `interview`, `call`)). Meetings are personal events; new ones default to restriction `personal` (§13). The user may be an entity too, so "whom did I meet, where" can be answered.
 - **Contributor roles:** `author`, `editor`, `translator`, `speaker`, `discussant`, `organizer`, `chair`
 - **Reading status:** `inbox`, `to-read`, `reading`, `read`, `skimmed`, `reference-only`, `abandoned`
 - **Publication status (per version):** `draft`, `working-paper`, `submitted`, `revise-resubmit`, `forthcoming`, `published`, `retracted`, `live` (web), `withdrawn`
@@ -471,7 +473,8 @@ label: Empirical paper
 | Bibliographic | `comment-on`/`commented-on-by`, `reply-to`/`replied-by`, `replication-of`/`replicated-by`, `erratum-for`/`has-erratum`, `split-from`/`split-into`, `merged-into`/`merged-from`, `part-of`/`has-part` |
 | Intellectual | `builds-on`, `extends`, `supports`, `challenges`, `uses-data-of`, `uses-method-of`, `same-setting-as` (symmetric) |
 | Workflow | `presentation-of`, `review-of`, `discusses`, `inspired-by` |
-| Entity | `works-at`/`employs`, `member-of`, `part-of`, `held-at`/`hosted`, `instance-of`, `advised-by`/`advised`, `presented-at` (item → event) |
+| Entity | `works-at`/`employs`, `member-of`, `part-of`, `held-at`/`hosted`, `instance-of`, `advised-by`/`advised`, `presented-at` (item → event), `attended`/`attended-by` (person → event) |
+| Provenance | `derived-from`/`source-of` (e.g. collection → the syllabus or paper it was built from, §14) |
 
 Link types may declare `from`/`to` object types, and may carry `from`/`to` dates for time-bounded relations.
 
@@ -498,6 +501,8 @@ restriction:
 ## 14. Collections
 
 `collection.md` holds `kind`, `title`, an optional `due` date, and ordered `sections[].members[]` (`{item, required, note}`), followed by free-form notes. Membership lives in the collection's file. The index works out each item's collections (`in:…` queries). Project collections can export their own `.bib` file and hold ideas.
+
+**Auto-built collections.** A collection can be built from a source item: from a **syllabus** (its weeks or topics become sections; required and optional readings set `required`) or from a paper's **reference list** (§20.10). The source item stays an ordinary item, readable, citable and searchable; the collection records `derived-from` → that item and is from then on an ordinary collection the user edits freely, like an applied template (§11). Extracted entries are proposals the user confirms, as with name matching (D15). Entries that match nothing in the library become items with metadata but no file yet (§22.3, *Pending*). Matching uses external `metadata` providers, so `flows.external: never` on the source item blocks it (§13); such entries are matched only against the library.
 
 ## 15. Citations and export
 
@@ -581,10 +586,13 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 - Estimate records and table views; graph views of entities and links
 - Boox annotation import; iOS Shortcut and Android share-target capture
 - Optional wrapped build (Capacitor) for the Boox: native PDF rendering and share target
+- Reference extraction; auto-built collections from syllabi and reference lists (§14; placement provisional)
+- Catalog graph and geographic views (§22.3)
 - `entityLookup` (OpenAlex/ORCID/ROR); local OCR
 
 **Later**
 - Encrypted sync; presentation mode; alerts; archive provider; AI helpers; version diffs; more storage providers
+- Retrieval of wanted items: assisted (best link per reference: open-access copy, publisher, library proxy) and, where a source or a wrapped build allows, automatic (§22.3)
 
 ## 19. Decisions log
 
@@ -612,6 +620,10 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 | D20 | **Hosting: Cloudflare.** `mayalib.org` is registered with Cloudflare Registrar; the app is served as a Cloudflare **Worker with static assets** (set up through Workers Builds' GitHub integration: every push to `main` builds and publishes) at **`app.mayalib.org`**. The subdomain keeps the apex free for a future project website and gives the app its own origin. **Rationale:** (1) MayaLib gets its own origin from day one (`*.pages.dev`, then `mayalib.org`), whereas GitHub Pages without a custom domain shares `ericdomeshek.github.io` with every Pages site on the account, which could then read MayaLib's storage and tokens; (2) Cloudflare can send HTTP security headers (`_headers`), notably a full Content Security Policy for an app that holds Drive access, which GitHub Pages cannot; (3) the registrar sells at cost, with the same price at renewal; (4) registration, DNS and hosting in one place, plus preview builds per branch and unmetered bandwidth for static files. **Accepted costs:** one more vendor and account (its GitHub app is limited to this repository); a Cloudflare-registered domain must use Cloudflare DNS. **Exit path:** the app is plain static files and the host never sees library data, so moving to GitHub Pages or another host is a configuration change (devices reinstall and rebuild caches; update the OAuth allowed origins). **Expected cost:** ~$11/yr for the domain (at-cost `.org`); hosting $0 on the free plan (static requests unlimited; 500 builds/month). **Re-examined after choosing a custom domain:** once `mayalib.org` exists, GitHub Pages with that domain also gives MayaLib its own origin, so reason (1) no longer distinguishes the two hosts. The remaining case for Cloudflare hosting is header control. GitHub Pages cannot set response headers. A `<meta>` Content Security Policy covers most directives, but not `frame-ancestors` (clickjacking protection), violation reporting, HSTS or Permissions-Policy, and GitHub Pages applies a fixed cache policy to every file (minor for a PWA, whose service worker manages its own cache). Preview builds and a single dashboard are conveniences. The alternatives weighed: (a) GitHub Pages with a `<meta>` CSP and the domain's DNS at Cloudflare, which keeps code, builds and hosting in GitHub and gives no third-party app repository access, at the cost of mainly clickjacking protection; (b) GitHub Pages proxied through Cloudflare, with headers added by Cloudflare rules, which gives full headers without repository access but is the most fiddly to configure (TLS mode, GitHub certificate provisioning behind the proxy). Both are defensible. **Decision kept:** full header control with the simplest setup outweighs the extra vendor for an app that holds Drive access. |
 | D21 | **UI: Preact + TypeScript + Vite.** Chosen for a small runtime (suits the e-ink Boox), React's widely understood component style (low stranding risk; large pool of examples and compatible libraries), and fluency of tooling and assistants. The UI stays a thin layer over framework-independent TypeScript modules (format, sync, storage, search, citations), so it remains replaceable. PWA tooling: `vite-plugin-pwa` (to confirm in Spike 0). |
 | D22 | **One app everywhere (UX).** A single UI offers every feature on every device: same concepts, names and navigation (capability parity, not layout parity). Layout adapts to device traits (screen width, touch or pointer, keyboard or none, e-ink display mode), not to device identity, so new devices need no special cases and e-ink is a display mode any device can use. Flows are ranked per device: each device's likely tasks (e.g. reading and highlighting on the Boox, capture and triage on the iPhone, filing, long notes and export on the Mac) get polished designs; the rest must work, possibly one level deeper. Platform differences come through capabilities (§4) and are explained in place, never silently hidden. **Rationale:** the user is never told to switch devices; one responsive UI over the shared modules is far less to build and maintain. **Risk:** drift toward a lowest-common-denominator UI; ranking flows per device is the counterweight. |
+| D23 | **Navigation shell (§22.2).** Four modes: *Pending*, *Reading*, *Catalog*, *Collections*: a bottom bar on narrow screens, a side rail on wide ones. A thin header shows the open library and where the user is, global search, and the sync indicator; a header menu holds Settings, Help and library switching. Settings is a full screen, not a mode. The reader is full screen, outside the modes. **Considered and dropped:** a *Notes* mode (notes are reached through their item or as a Catalog scope); a *Settings* mode (too rarely used for a slot); a separate *Map* mode (became Catalog scopes and views); a *Search* mode (search is global, and Catalog is search with filters). |
+| D24 | **Vocabulary (§22.1).** *Library* means the whole container, never just the items. A user may have several libraries (e.g. one per interest), one open at a time, with no links or search across them (§7). |
+| D25 | **Meetings** (lunches, interviews, calls) are `event` entities of kind `meeting`, linked to people by `attended`. New meetings default to restriction `personal`. |
+| D26 | **Auto-built collections:** a collection can be built from a syllabus or a paper's reference list, keeping a `derived-from` link to its source item; extracted entries are confirmed by the user (§14). Retrieval of the files for wanted items is deferred to a later release (§18). |
 
 ## 20. Open questions
 
@@ -624,6 +636,9 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 7. **Persistent storage on iOS** (to verify in Spike 0, D19): confirm the effective quota and that persistent storage is honored for Home Screen apps on current iOS.
 8. ~~**Static host and address:**~~ *Resolved: D20 (Cloudflare; app at `app.mayalib.org`). Keep the domain on auto-renew with registrar lock; if it is ever lost, remove it from the OAuth allowed origins and revoke MayaLib's access immediately.*
 9. **Drive permission scope** (provisionally `drive.file`, D18; confirm in Spike 0): `drive.file` (the narrowest: only files MayaLib created or that the user picks; files arriving by other routes, such as the iOS Shortcut, Boox exports or the Mac's Drive folder, must be imported through the Google Picker) versus `drive` (full Drive access: those routes work directly, and the Mac could use the Drive for desktop folder; costs: broad access, plus a one-time "unverified app" warning). Leaning `drive.file` for v1 with a picker-based "import from inbox" step. To confirm in a setup spike: token and consent behavior for an unverified personal-use app.
+10. **Storing references** (needed for auto-built collections, §14): the citation graph among library items is derived (§10), but references to works *not* in the library, and the user's decisions about them (want / ignore / matches item X), are not rebuildable and must be stored. References also belong to a version (working paper and published article often cite different works). Sketch: extracted references per file, derived and stored beside the extracted text (`<file>.refs.json`, §9.3), plus the user's decisions in the item's own files. To settle before reference extraction is built.
+11. **UX names** (§22.1): *Catalog* or *Browse* for the finding mode; *Pending* as the label for the mode and for the reading status `core:inbox` (provisional; "Inbox" read as messaging, "In process" collides with *Reading*); the user-facing umbrella for entities (*People & places* provisional).
+12. **Locations for entities:** a geographic view (§22.3) needs locations on organizations and events. Additive field (ROR can supply many); to define when that view is built.
 
 ## 21. Spike 0 findings
 
@@ -681,3 +696,70 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 
 **Still to run:** Google Picker import under `drive.file`; installed app (Safari "Add to Dock"); iPhone and Boox (needs the Cloudflare deployment); multi-day persistence and token renewal.
 
+
+## 22. User interface
+
+*First draft, from the UX conversation of 2026-11-26. Principle: one app everywhere (§2 principle 9, D22).*
+
+### 22.1 Vocabulary (user-facing)
+
+| Term | Means |
+|---|---|
+| **Library** | Everything in one top-level folder: items, notes, people and places, collections, taxonomies, templates. A user may have several (§7); one is open at a time and its name is always visible in the header. |
+| **Item** | One work the user captures, reads or cites: a paper, book, web page, talk, dataset, syllabus. Preferred over "document", since talks and datasets are not documents. |
+| **Version** | One form of an item (working paper, published article, a web snapshot). |
+| **Note** | A highlight, comment, summary, question, estimate or idea. Ideas need not belong to an item. |
+| **People & places** | The user-facing umbrella for entities (§10): people, organizations, venues, events and meetings. "Entity" is not used in the UI. *(Name provisional, §20.11.)* |
+| **Collection** | An ordered, sectioned list of items: reading list, syllabus, project, field exam, reading group. |
+
+Labels come from taxonomy labels, never from IDs, so renaming a label in the UI never changes data.
+
+### 22.2 Shell
+
+```
+┌──────────────────────────────────────────────┐
+│ ☰ Economics ▾   Catalog › Items     🔍   ⟳ 2 │  header
+├──────────────────────────────────────────────┤
+│                                              │
+│      mode content (1–3 panes by width)       │
+│                                              │
+├──────────────────────────────────────────────┤
+│  Pending   Reading   Catalog   Collections   │  bottom bar (narrow)
+└──────────────────────────────────────────────┘
+```
+
+- **Header** (thin): library name, which opens the header menu (switch library, Settings, Help, account and Drive access); where the user is (mode and location); global search; the sync indicator required by §3.2 rule 2 (e.g. "⟳ 2" unsynced changes).
+- **Modes:** *Pending*, *Reading*, *Catalog*, *Collections* (§22.3). On narrow screens, a bottom bar; on wide screens, a side rail with the same icons, labels and order, with Settings pinned at the rail's foot. Same places, different position (D22).
+- **Back navigation is in-app.** An iOS Home Screen app has no browser back button; the Boox's system back button must do the same thing as the in-app one.
+- **Quick actions** available from anywhere: new idea; capture or add an item (by DOI, ISBN, URL or file).
+- **Settings** is a full screen opened from the header menu: storage per residency class and budgets (§5.5), Drive access and granted scopes (§21.1), providers, templates, taxonomy editing, display (e-ink mode), devices, help.
+
+### 22.3 Modes
+
+| Mode | The question it answers | Contents |
+|---|---|---|
+| **Pending** | "What's come in, and what's waiting on me?" | New captures and imports to file (`inbox/`, reading status `core:inbox`); decisions waiting on the user: sync conflicts, names to match to people (D15), restrictions coming due (§13), entries proposed by auto-built collections (§14). Later: a *to get* list of wanted items with metadata but no file (§18). "Acquired?" is kept separate from "read?". |
+| **Reading** | "What am I in the middle of?" | Items with status `reading`, each reopening at the user's last position. |
+| **Catalog** | "What do I have?" | Find and browse anything. A **scope selector**: Items · People & places · Notes (plus a combined *All*, not the default, since mixed lists are hard to scan). Filters follow the query syntax (§6.5); browsing a taxonomy (e.g. JEL J2) is a filter. **Views:** list everywhere; later a graph and a geographic map, mainly for People & places (v2, §20.12). An item's page has a *connections* link that opens Catalog centred on it. |
+| **Collections** | "What's on this list or project?" | Collections as workspaces: sections, required and optional members, due dates, progress, ideas; creating a collection by hand or auto-building it from a syllabus or reference list (§14). |
+
+Notes have no mode of their own: they are reached through their item (opening a note jumps to its place in the source) or as a Catalog scope. Ideas without an item live in project collections or are found in Catalog.
+
+### 22.4 Reader
+
+- **Full screen, outside the modes:** no header or bar while reading. A light tap brings up the reader's own controls (back, notes panel, highlight, table of contents, version switch); they hide again.
+- Opened from anywhere (Pending, Reading, a search hit, a collection, a note); *back* returns there.
+- **Highlighting uses native text selection.** The selection is remembered as it changes, because on iOS a tap on a button clears it first (§21.1).
+- On wide screens, the notes for the item can stay open beside the page.
+
+### 22.5 Layout adaptation
+
+Layout follows traits, not device identity (D22):
+
+- **Width:** one pane (phone), two (tablet, Boox portrait), three (Mac): e.g. list · detail · notes.
+- **Input:** touch targets sized for fingers when there is no pointer; keyboard shortcuts when there is a keyboard.
+- **E-ink mode** (a display setting any device can turn on, default on the Boox): no animation or transitions; high contrast; paging rather than smooth scrolling; minimal redraws (status changes do not redraw the page); graph views fall back to lists.
+
+### 22.6 Still to design
+
+Per-device priority flows (D22); the screens within each mode; capture flows and the capture preview with restriction choice (§21.1); onboarding and library creation; how conflicts and coverage are shown in detail.
