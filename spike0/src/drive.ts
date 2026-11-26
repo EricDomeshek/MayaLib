@@ -59,10 +59,15 @@ export async function requestToken(scope: ScopeName, prompt: '' | 'consent' | 's
   });
 }
 
+/** Revoke the grant at Google. Rejects if Google (or the browser) reports a failure. */
 export function revoke(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (!token || !window.google) { resolve(); return; }
-    window.google.accounts.oauth2.revoke(token.accessToken, () => {
+    window.google.accounts.oauth2.revoke(token.accessToken, (r) => {
+      if (r && r.successful === false) {
+        reject(new Error(`revoke failed: ${r.error ?? 'unknown'} ${r.error_description ?? ''}`.trim()));
+        return;
+      }
       token = null;
       tokenListeners.forEach((l) => l());
       resolve();

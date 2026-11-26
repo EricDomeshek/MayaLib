@@ -135,7 +135,7 @@ export function DrivePanel() {
         <button disabled={busy || !token} onClick={runAll}>Run Drive tests</button>
         <button disabled={busy || !token} onClick={listOnly}>List folder again</button>
         <button disabled={busy || !token} onClick={searchAgain}>Search again</button>
-        <button disabled={busy || !token} onClick={() => D.revoke().then(() => say('Access revoked.'))}>Revoke</button>
+        <button disabled={busy || !token} onClick={() => step('revoke', async () => { await D.revoke(); return 'revoked'; })}>Revoke</button>
       </div>
       <p>
         Status: {token

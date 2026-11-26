@@ -22,7 +22,7 @@ interface Window {
           callback: (r: GisTokenResponse) => void;
           error_callback?: (e: { type: string; message?: string }) => void;
         }): GisTokenClient;
-        revoke(token: string, done?: () => void): void;
+        revoke(token: string, done?: (r: { successful: boolean; error?: string; error_description?: string }) => void): void;
       };
     };
   };
