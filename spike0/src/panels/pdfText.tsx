@@ -60,6 +60,7 @@ function toDom(ps: PageState, off: number): [Node, number] | null {
 
 // Find the quote again, using prefix/suffix to choose between repeated occurrences.
 function locate(ps: PageState, h: Highlight): [number, number] | null {
+  if (!h.quote) return null;
   let best: [number, number] | null = null;
   let bestScore = -1;
   for (let at = ps.pageText.indexOf(h.quote); at >= 0; at = ps.pageText.indexOf(h.quote, at + 1)) {
@@ -181,6 +182,10 @@ export function PdfTextPanel() {
   }
 
   function drawHighlights(list = hlRef.current) {
+    try { drawHighlightsInner(list); } catch (e) { say(`✘ drawing highlights failed: ${errText(e)}`); record(P, 'drawError', errText(e)); }
+  }
+
+  function drawHighlightsInner(list: Highlight[]) {
     const ov = overlay.current, host = wrap.current, st = ps.current;
     if (!ov || !host || !st) return;
     ov.innerHTML = '';
@@ -215,19 +220,28 @@ export function PdfTextPanel() {
   useEffect(() => { drawHighlights(); }, [highlights, pageNo]);
 
   async function saveFromSelection(method: 'native' | 'tap') {
+    try { await saveInner(method); } catch (e) { say(`✘ saving failed: ${errText(e)}`); record(P, 'saveError', errText(e)); }
+  }
+
+  async function saveInner(method: 'native' | 'tap') {
     const st = ps.current;
     const sel = getSelection();
-    if (!st || !sel || sel.rangeCount === 0 || sel.isCollapsed) { say('Select some text on the page first.'); return; }
+    if (!st) { say('Page not ready yet (text layer still loading).'); return; }
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { say('Select some text on the page first.'); return; }
     const r = sel.getRangeAt(0);
     let s = toOffset(st, r.startContainer, r.startOffset);
     let e = toOffset(st, r.endContainer, r.endOffset);
-    if (s === null || e === null) { say('Selection is outside the page text.'); return; }
+    if (s === null || e === null) {
+      const d = (n: Node) => n.nodeType === Node.TEXT_NODE ? `text in <${n.parentElement?.tagName.toLowerCase()} class="${n.parentElement?.className}">` : `<${(n as Element).tagName?.toLowerCase()} class="${(n as Element).className}">`;
+      say(`Selection is outside the page text (start: ${d(r.startContainer)} @${r.startOffset}; end: ${d(r.endContainer)} @${r.endOffset}).`);
+      return;
+    }
     if (e < s) [s, e] = [e, s];
     // Trim whitespace (including virtual separators) from both ends of the selection.
     while (s < e && /\s/.test(st.pageText[s])) s++;
     while (e > s && /\s/.test(st.pageText[e - 1])) e--;
     const quote = st.pageText.slice(s, e);
-    if (!quote.trim()) { say('Empty selection.'); return; }
+    if (!quote.trim()) { say(`Empty selection (offsets ${s}–${e}).`); return; }
     const h: Highlight = {
       id: `${Date.now()}`, page: pageNo, quote,
       prefix: st.pageText.slice(Math.max(0, s - CONTEXT), s),
