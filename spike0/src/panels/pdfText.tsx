@@ -133,6 +133,8 @@ export function PdfTextPanel() {
     tapStart.current = null;
     ps.current = null;
     lastSel.current = null;
+    tapStart.current = null;
+    tapMark.current = null;
     const host = wrap.current;
     host.innerHTML = '';
     if (overlay.current) overlay.current.innerHTML = '';
@@ -269,8 +271,12 @@ export function PdfTextPanel() {
         return;
       }
     }
-    let { s, e } = o;
-    if (e < s) [s, e] = [e, s];
+    await saveOffsets(st, o.s, o.e, method, source);
+  }
+
+  // Shared by selection-based and tap-based highlighting: offsets in pageText → stored highlight.
+  async function saveOffsets(st: PageState, s0: number, e0: number, method: 'native' | 'tap', source: string) {
+    let s = Math.min(s0, e0), e = Math.max(s0, e0);
     // Trim whitespace (including virtual separators) from both ends of the selection.
     while (s < e && /\s/.test(st.pageText[s])) s++;
     while (e > s && /\s/.test(st.pageText[e - 1])) e--;
@@ -285,39 +291,73 @@ export function PdfTextPanel() {
     const next = [...hlRef.current, h];
     await kvSet(docKey.current, next);
     setHighlights(next);
-    sel?.removeAllRanges();
+    getSelection()?.removeAllRanges();
     lastSel.current = null;
     say(`Saved highlight (${method}, from ${source}): “${quote.slice(0, 80)}${quote.length > 80 ? '…' : ''}”`);
     record(P, `saved_${h.id}`, { page: h.page, chars: quote.length, method, source });
   }
 
-  // Tap mode: tap the first word, then the last word; MayaLib builds the selection.
-  function onTap(ev: MouseEvent) {
-    if (!tapMode || !ps.current) return;
-    const c = charAt(ps.current, ev.clientX, ev.clientY);
-    const off = c && toOffset(ps.current, c[0], c[1]);
-    if (off === null || off === undefined) return;
-    const text = ps.current.pageText;
-    if (tapStart.current === null) {
-      let s = off;
-      while (s > 0 && /\S/.test(text[s - 1])) s--;
-      tapStart.current = s;
-      say('Start set. Now tap the last word.');
-      return;
-    }
-    let s = tapStart.current, e = off;
-    if (e < s) [s, e] = [e, s];
-    while (e < text.length && /\S/.test(text[e])) e++;
-    tapStart.current = null;
-    const a = toDom(ps.current, s), b = toDom(ps.current, e);
-    if (!a || !b) return;
+  // Tap mode: tap the first word, then the last word; MayaLib builds the highlight from the two taps.
+  // Uses pointer events (iOS may not deliver click for taps on text), ignores drags, marks the first
+  // word visibly, and saves straight from offsets so it doesn't depend on the browser's selection.
+  const down = useRef<{ x: number; y: number } | null>(null);
+  const tapMark = useRef<HTMLDivElement | null>(null);
+
+  function clearTapMark() {
+    tapMark.current?.remove();
+    tapMark.current = null;
+  }
+
+  function markWord(st: PageState, s: number, e: number) {
+    clearTapMark();
+    const a = toDom(st, s), b = toDom(st, e);
+    if (!a || !b || !overlay.current || !wrap.current) return;
     const r = document.createRange();
     r.setStart(a[0], a[1]);
     r.setEnd(b[0], b[1]);
-    const sel = getSelection()!;
-    sel.removeAllRanges();
-    sel.addRange(r);
-    saveFromSelection('tap');
+    const rect = r.getBoundingClientRect();
+    const box = wrap.current.getBoundingClientRect();
+    const m = document.createElement('div');
+    m.className = 'tapmark';
+    Object.assign(m.style, { left: `${rect.left - box.left - 2}px`, top: `${rect.top - box.top - 2}px`, width: `${rect.width + 4}px`, height: `${rect.height + 4}px` });
+    overlay.current.appendChild(m);
+    tapMark.current = m;
+  }
+
+  function onPointerDown(ev: PointerEvent) {
+    down.current = { x: ev.clientX, y: ev.clientY };
+  }
+
+  function onPointerUp(ev: PointerEvent) {
+    if (!tapMode || !ps.current) return;
+    const d = down.current;
+    down.current = null;
+    if (d && Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 12) return; // a drag/scroll, not a tap
+    const st = ps.current;
+    const c = charAt(st, ev.clientX, ev.clientY);
+    const off = c && toOffset(st, c[0], c[1]);
+    if (off === null || off === undefined) { say('Tap landed between words; tap directly on a word.'); return; }
+    ev.preventDefault();
+    const text = st.pageText;
+    if (tapStart.current === null) {
+      let s = off, e = off;
+      while (s > 0 && /\S/.test(text[s - 1])) s--;
+      while (e < text.length && /\S/.test(text[e])) e++;
+      tapStart.current = s;
+      markWord(st, s, e);
+      say(`Start set at “${text.slice(s, e)}”. Now tap the last word.`);
+      return;
+    }
+    let s = tapStart.current, e = off;
+    if (e < s) {
+      // Tapped before the start: treat the earlier word as the start.
+      const t = s; s = e; e = t;
+      while (s > 0 && /\S/.test(text[s - 1])) s--;
+    }
+    while (e < text.length && /\S/.test(text[e])) e++;
+    tapStart.current = null;
+    clearTapMark();
+    saveOffsets(st, s, e, 'tap', 'two taps').catch((err) => say(`✘ saving failed: ${errText(err)}`));
   }
 
   async function clearAll() {
@@ -343,7 +383,7 @@ export function PdfTextPanel() {
           <span>Page {pageNo} / {numPages}</span>
           <button disabled={busy || pageNo >= numPages} onClick={() => renderPage(pageNo + 1)}>Next ›</button>
           <button disabled={busy} onClick={() => saveFromSelection('native')}>Save highlight</button>
-          <button disabled={busy} onClick={() => { setTapMode(!tapMode); tapStart.current = null; }}>
+          <button disabled={busy} onClick={() => { setTapMode(!tapMode); tapStart.current = null; clearTapMark(); }}>
             Tap mode: {tapMode ? 'ON' : 'off'}
           </button>
           <button disabled={busy || highlights.length === 0} onClick={clearAll}>Clear highlights</button>
@@ -351,7 +391,7 @@ export function PdfTextPanel() {
       )}
       {/* Fixed height: a growing log would shift the page between the two taps of Tap mode. */}
       <pre style="height:9em">{log.join('\n') || 'No PDF loaded.'}</pre>
-      <div class="pdfPage" onClick={onTap}>
+      <div class={`pdfPage${tapMode ? ' tapmode' : ''}`} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
         <div ref={wrap} class="pdfLayers" />
         <div ref={overlay} class="hlLayer" />
       </div>

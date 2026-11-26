@@ -41,3 +41,8 @@ canvas { max-width: 100%; border: 1px solid #000; margin-top: 6px; }
 .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: 0; user-select: none; }
 .hlLayer { position: absolute; inset: 0; pointer-events: none; }
 .hlLayer .hl { position: absolute; background: rgba(0, 0, 0, 0.18); border-bottom: 2px solid #000; }
+
+/* Tap mode: turn off the browser's own text selection and callout so taps reach MayaLib. */
+.tapmode .textLayer, .tapmode .textLayer :is(span, br) {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; cursor: pointer; }
+.hlLayer .tapmark { position: absolute; border: 3px solid #000; border-radius: 3px; }
