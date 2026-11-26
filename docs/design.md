@@ -2,6 +2,8 @@
 
 *Status: draft for review · Last updated 2026-11-25*
 
+**Since Draft 3:** decisions D14–D19 resolve most open questions; Spike 0 defined (D19).
+
 **Changes from Draft 2:** platform targets and distribution with no paid Apple developer account (§3.1); web storage and retention limits (§3.2); native and wrapped options considered (§3.3); per-device storage budgets (§5.5).
 
 **Changes from Draft 1:** web pages as sources (§9); per-file extracted text (§9.3); entities as first-class objects (§10); a note-template library (§11); where data lives and how sync works (§5); tiered search (§6); pluggable service capabilities (§4); implementation substrate left open (§20).
@@ -600,15 +602,21 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 | D11 | Native or wrapped shells are optional enhancements (Android and macOS only), implemented as alternative providers |
 | D12 | Device-local data is a cache. Unsent changes are the only data at risk, so they are uploaded immediately and shown while pending |
 | D13 | No account-related identifiers in the repository. The OAuth client ID is per-deployment configuration injected at build time |
+| D14 | v1 search = each device's local index + Drive's `remoteSearch`, with coverage reporting. The shared prebuilt index and the indexer role are postponed to v2 (resolves §20.2, §20.4) |
+| D15 | Name-to-entity matching suggests, never decides: v1 matches against entities already in the library; v2 adds OpenAlex suggestions. Never auto-merge (resolves §20.5) |
+| D16 | Storage pressure: show usage per residency class; optional per-version `keepOriginal: false` keeps text, metadata and DOI/URL but drops the original file; paid Google storage as fallback (resolves §20.3) |
+| D17 | Search engine: official SQLite WebAssembly build with FTS5, using the `opfs-sahpool` storage mode (works without special server headers); fallback MiniSearch if Spike 0 fails |
+| D18 | Drive scope: `drive.file` for v1 (provisional; reversible without data changes), with a picker-based "import from inbox" step (§20.9) |
+| D19 | Before real implementation, Spike 0 (a throwaway test app) verifies on the actual devices: OAuth behavior per scope and publishing status; iOS persistent storage; SQLite/OPFS on Safari and the Boox; pdf.js speed on the Boox; Shortcut → Drive capture; bookmarklet capture size |
 
 ## 20. Open questions
 
 1. **Implementation substrate:** the platform is now constrained to a web codebase (§3.1–3.3). Still open: UI framework, build tooling, choice of search engine. To be decided closer to implementation.
-2. **Shared index:** is the range-read SQLite approach worth its complexity, compared with relying on `remoteSearch` plus local indexes? Prototype both before committing.
-3. **Storage quota:** what to do when source files outgrow the free 15 GB (shared with Gmail and Photos)? Options: a paid tier, keeping very large scans outside the library, or keeping text only for some items.
-4. **Indexer device:** what happens when the Mac is offline for long periods? Can another device take over, and how is that handed off?
-5. **Resolving names to entities:** how much to automate (OpenAlex matching) versus confirm by hand.
-6. **Web capture on iOS:** confirm that a Shortcut can write to the Google Drive location in Files, and how large a page it and a bookmarklet can serialize.
-7. **Persistent storage on iOS:** confirm the effective quota and that persistent storage is honored for Home Screen apps on current iOS.
-8. **Static host and address** for the app code (GitHub Pages / Cloudflare Pages / Firebase Hosting). The address must be stable because browser storage and the OAuth setup are tied to it. Free GitHub Pages requires a public repository, which is acceptable since the code contains no secrets (an OAuth client ID is public by design); Cloudflare Pages also serves private repositories.
-9. **Drive permission scope:** `drive.file` (the narrowest: only files MayaLib created or that the user picks; files arriving by other routes, such as the iOS Shortcut, Boox exports or the Mac's Drive folder, must be imported through the Google Picker) versus `drive` (full Drive access: those routes work directly, and the Mac could use the Drive for desktop folder; costs: broad access, plus a one-time "unverified app" warning). Leaning `drive.file` for v1 with a picker-based "import from inbox" step. To confirm in a setup spike: token and consent behavior for an unverified personal-use app.
+2. ~~**Shared index:**~~ *Resolved: D14 (postponed to v2).* is the range-read SQLite approach worth its complexity, compared with relying on `remoteSearch` plus local indexes? Prototype both before committing.
+3. ~~**Storage quota:**~~ *Resolved: D16.* what to do when source files outgrow the free 15 GB (shared with Gmail and Photos)? Options: a paid tier, keeping very large scans outside the library, or keeping text only for some items.
+4. ~~**Indexer device:**~~ *Resolved: D14 (not needed in v1).* what happens when the Mac is offline for long periods? Can another device take over, and how is that handed off?
+5. ~~**Resolving names to entities:**~~ *Resolved: D15.* how much to automate (OpenAlex matching) versus confirm by hand.
+6. **Web capture on iOS** (to verify in Spike 0, D19): confirm that a Shortcut can write to the Google Drive location in Files, and how large a page it and a bookmarklet can serialize.
+7. **Persistent storage on iOS** (to verify in Spike 0, D19): confirm the effective quota and that persistent storage is honored for Home Screen apps on current iOS.
+8. **Static host and address.** Note: GitHub Pages without a custom domain shares the origin `<user>.github.io` with all of that user's Pages sites, which could then read MayaLib's storage and tokens, so MayaLib needs its own origin (a custom domain, or Cloudflare Pages' `*.pages.dev`). A custom domain must be kept renewed: if it lapses and someone else registers it, their code would inherit the origin, so remove it from the OAuth allowed origins immediately. Choice of for the app code (GitHub Pages / Cloudflare Pages / Firebase Hosting). The address must be stable because browser storage and the OAuth setup are tied to it. Free GitHub Pages requires a public repository, which is acceptable since the code contains no secrets (an OAuth client ID is public by design); Cloudflare Pages also serves private repositories.
+9. **Drive permission scope** (provisionally `drive.file`, D18; confirm in Spike 0): `drive.file` (the narrowest: only files MayaLib created or that the user picks; files arriving by other routes, such as the iOS Shortcut, Boox exports or the Mac's Drive folder, must be imported through the Google Picker) versus `drive` (full Drive access: those routes work directly, and the Mac could use the Drive for desktop folder; costs: broad access, plus a one-time "unverified app" warning). Leaning `drive.file` for v1 with a picker-based "import from inbox" step. To confirm in a setup spike: token and consent behavior for an unverified personal-use app.
