@@ -2,7 +2,7 @@
 
 *Status: draft for review · Last updated 2026-11-26*
 
-**Since Draft 3:** first Spike 0 findings (§21); decisions D14–D21 resolve most open questions: Spike 0 defined (D19); hosting on Cloudflare at `app.mayalib.org` (D20); UI in Preact (D21). UX/UI design begun (§22): one app everywhere (D22); navigation shell with four modes (D23); vocabulary and several libraries per user (D24, §7); meetings as events (D25); collections auto-built from syllabi and reference lists (D26, §14).
+**Since Draft 3:** first Spike 0 findings (§21); decisions D14–D21 resolve most open questions: Spike 0 defined (D19); hosting on Cloudflare at `app.mayalib.org` (D20); UI in Preact (D21). UX/UI design begun (§22): one app everywhere (D22); navigation shell with four modes (D23); vocabulary and several libraries per user (D24, §7); meetings as events (D25); collections auto-built from syllabi and reference lists (D26, §14); *To Do* with tasks, and reminders via Calendar and Reminders (D27, §22.6); capture flow (D28, §22.7).
 
 **Changes from Draft 2:** platform targets and distribution with no paid Apple developer account (§3.1); web storage and retention limits (§3.2); native and wrapped options considered (§3.3); per-device storage budgets (§5.5).
 
@@ -97,7 +97,7 @@ Design rules that follow:
 | Codebase | one (web) | one (web) plus small native plugins | one (Dart); the web code is not reused |
 | iOS without a paid account | ✓ | ✗ (7-day re-signing) | ✗ (7-day re-signing) |
 | Storage | quota; can be cleared | free disk space; the app owns its files | free disk space; the app owns its files |
-| Share-sheet capture | Shortcut workaround | native share extension (✓ on Android/Mac; iOS needs signing) | same as wrapped |
+| Share-sheet capture | Android: Web Share Target for an installed PWA (to verify on the Boox); iOS: Shortcut workaround | native share extension (✓ on Android/Mac; iOS needs signing) | same as wrapped |
 | PDF rendering on e-ink | pdf.js (to be benchmarked) | native renderer available | native renderer |
 | Search engine | SQLite in WebAssembly (OPFS) | native SQLite | native SQLite |
 
@@ -161,7 +161,7 @@ A shared test suite runs against every storage provider. A provider counts as fi
 
 | Class | Contents | Mac (default) | iPhone / Boox (default) |
 |---|---|---|---|
-| **Core** — always mirrored | `library.yaml`, `_schema/`, `_templates/`, `_config/`, every `item.md`, notes, history logs, collections, ideas, entities | everything | everything |
+| **Core** — always mirrored | `library.yaml`, `_schema/`, `_templates/`, `_config/`, every `item.md`, notes, history logs, collections, ideas, tasks, entities | everything | everything |
 | **Content** — fetched on demand, cached | source files (PDF, EPUB, web snapshots), extracted text | keep everything | pinned + recently used, within a storage budget |
 | **Shared derived** | `_index/` (prebuilt full-text index, bootstrap bundle) | builds it (indexer device) | reads it remotely or downloads it if space allows |
 | **Local derived** | local search indexes, path→ID map, thumbnails | yes | yes |
@@ -276,6 +276,7 @@ MayaLib/
     events/nber-summer-institute-2026--5t2a.md
   collections/labor-field-exam--7k2p/collection.md
   ideas/01JDXC…-idea.md
+  tasks/01JDXD…-task.md               # user-created tasks (§12)
   inbox/                             # drop folder (Boox exports, quick captures)
   exports/                           # generated .bib / .json (rebuildable)
 ```
@@ -466,6 +467,8 @@ label: Empirical paper
 
 **Status:** the current reading status is stored in `item.md`. Every change is also appended to `history/<deviceId>.jsonl`, one log per device, so the logs never conflict.
 
+**Tasks** (`tasks/*.md`) are one file per task, created by the user: `title`, optional `due` (date or date-time), `done` (date or null), optional `links` to the items, collections, people or events it concerns, and free-form notes. A task linked to a restricted item inherits its restriction. Deliberately simple: no projects, subtasks or recurrence; MayaLib is not a general to-do app (§22.3). Things the system needs from the user (items to file, conflicts, matches) are *not* tasks: they are computed from the library's state and never stored.
+
 **Links** are `{type, target, note?, locator?}`, stored once in the source object's file. The index works out the reverse direction. Links connect items, notes, entities and collections.
 
 | Group | Types (with inverse) |
@@ -502,7 +505,7 @@ restriction:
 
 `collection.md` holds `kind`, `title`, an optional `due` date, and ordered `sections[].members[]` (`{item, required, note}`), followed by free-form notes. Membership lives in the collection's file. The index works out each item's collections (`in:…` queries). Project collections can export their own `.bib` file and hold ideas.
 
-**Auto-built collections.** A collection can be built from a source item: from a **syllabus** (its weeks or topics become sections; required and optional readings set `required`) or from a paper's **reference list** (§20.10). The source item stays an ordinary item, readable, citable and searchable; the collection records `derived-from` → that item and is from then on an ordinary collection the user edits freely, like an applied template (§11). Extracted entries are proposals the user confirms, as with name matching (D15). Entries that match nothing in the library become items with metadata but no file yet (§22.3, *Pending*). Matching uses external `metadata` providers, so `flows.external: never` on the source item blocks it (§13); such entries are matched only against the library.
+**Auto-built collections.** A collection can be built from a source item: from a **syllabus** (its weeks or topics become sections; required and optional readings set `required`) or from a paper's **reference list** (§20.10). The source item stays an ordinary item, readable, citable and searchable; the collection records `derived-from` → that item and is from then on an ordinary collection the user edits freely, like an applied template (§11). Extracted entries are proposals the user confirms, as with name matching (D15). Entries that match nothing in the library become items with metadata but no file yet (§22.3, *To Do*). Matching uses external `metadata` providers, so `flows.external: never` on the source item blocks it (§13); such entries are matched only against the library.
 
 ## 15. Citations and export
 
@@ -584,7 +587,7 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 **v2**
 - Shared prebuilt full-text index plus range-read querying; bootstrap bundle
 - Estimate records and table views; graph views of entities and links
-- Boox annotation import; iOS Shortcut and Android share-target capture
+- Boox annotation import; iOS Shortcut capture (the Android share target is v1 if the Boox confirms it, §20.13)
 - Optional wrapped build (Capacitor) for the Boox: native PDF rendering and share target
 - Reference extraction; auto-built collections from syllabi and reference lists (§14; placement provisional)
 - Catalog graph and geographic views (§22.3)
@@ -620,10 +623,12 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 | D20 | **Hosting: Cloudflare.** `mayalib.org` is registered with Cloudflare Registrar; the app is served as a Cloudflare **Worker with static assets** (set up through Workers Builds' GitHub integration: every push to `main` builds and publishes) at **`app.mayalib.org`**. The subdomain keeps the apex free for a future project website and gives the app its own origin. **Rationale:** (1) MayaLib gets its own origin from day one (`*.pages.dev`, then `mayalib.org`), whereas GitHub Pages without a custom domain shares `ericdomeshek.github.io` with every Pages site on the account, which could then read MayaLib's storage and tokens; (2) Cloudflare can send HTTP security headers (`_headers`), notably a full Content Security Policy for an app that holds Drive access, which GitHub Pages cannot; (3) the registrar sells at cost, with the same price at renewal; (4) registration, DNS and hosting in one place, plus preview builds per branch and unmetered bandwidth for static files. **Accepted costs:** one more vendor and account (its GitHub app is limited to this repository); a Cloudflare-registered domain must use Cloudflare DNS. **Exit path:** the app is plain static files and the host never sees library data, so moving to GitHub Pages or another host is a configuration change (devices reinstall and rebuild caches; update the OAuth allowed origins). **Expected cost:** ~$11/yr for the domain (at-cost `.org`); hosting $0 on the free plan (static requests unlimited; 500 builds/month). **Re-examined after choosing a custom domain:** once `mayalib.org` exists, GitHub Pages with that domain also gives MayaLib its own origin, so reason (1) no longer distinguishes the two hosts. The remaining case for Cloudflare hosting is header control. GitHub Pages cannot set response headers. A `<meta>` Content Security Policy covers most directives, but not `frame-ancestors` (clickjacking protection), violation reporting, HSTS or Permissions-Policy, and GitHub Pages applies a fixed cache policy to every file (minor for a PWA, whose service worker manages its own cache). Preview builds and a single dashboard are conveniences. The alternatives weighed: (a) GitHub Pages with a `<meta>` CSP and the domain's DNS at Cloudflare, which keeps code, builds and hosting in GitHub and gives no third-party app repository access, at the cost of mainly clickjacking protection; (b) GitHub Pages proxied through Cloudflare, with headers added by Cloudflare rules, which gives full headers without repository access but is the most fiddly to configure (TLS mode, GitHub certificate provisioning behind the proxy). Both are defensible. **Decision kept:** full header control with the simplest setup outweighs the extra vendor for an app that holds Drive access. |
 | D21 | **UI: Preact + TypeScript + Vite.** Chosen for a small runtime (suits the e-ink Boox), React's widely understood component style (low stranding risk; large pool of examples and compatible libraries), and fluency of tooling and assistants. The UI stays a thin layer over framework-independent TypeScript modules (format, sync, storage, search, citations), so it remains replaceable. PWA tooling: `vite-plugin-pwa` (to confirm in Spike 0). |
 | D22 | **One app everywhere (UX).** A single UI offers every feature on every device: same concepts, names and navigation (capability parity, not layout parity). Layout adapts to device traits (screen width, touch or pointer, keyboard or none, e-ink display mode), not to device identity, so new devices need no special cases and e-ink is a display mode any device can use. Flows are ranked per device: each device's likely tasks (e.g. reading and highlighting on the Boox, capture and triage on the iPhone, filing, long notes and export on the Mac) get polished designs; the rest must work, possibly one level deeper. Platform differences come through capabilities (§4) and are explained in place, never silently hidden. **Rationale:** the user is never told to switch devices; one responsive UI over the shared modules is far less to build and maintain. **Risk:** drift toward a lowest-common-denominator UI; ranking flows per device is the counterweight. |
-| D23 | **Navigation shell (§22.2).** Four modes: *Pending*, *Reading*, *Catalog*, *Collections*: a bottom bar on narrow screens, a side rail on wide ones. A thin header shows the open library and where the user is, global search, and the sync indicator; a header menu holds Settings, Help and library switching. Settings is a full screen, not a mode. The reader is full screen, outside the modes. **Considered and dropped:** a *Notes* mode (notes are reached through their item or as a Catalog scope); a *Settings* mode (too rarely used for a slot); a separate *Map* mode (became Catalog scopes and views); a *Search* mode (search is global, and Catalog is search with filters). |
+| D23 | **Navigation shell (§22.2).** Four modes: *Pending* (renamed *To Do*, D27), *Reading*, *Catalog*, *Collections*: a bottom bar on narrow screens, a side rail on wide ones. A thin header shows the open library and where the user is, global search, and the sync indicator; a header menu holds Settings, Help and library switching. Settings is a full screen, not a mode. The reader is full screen, outside the modes. **Considered and dropped:** a *Notes* mode (notes are reached through their item or as a Catalog scope); a *Settings* mode (too rarely used for a slot); a separate *Map* mode (became Catalog scopes and views); a *Search* mode (search is global, and Catalog is search with filters). |
 | D24 | **Vocabulary (§22.1).** *Library* means the whole container, never just the items. A user may have several libraries (e.g. one per interest), one open at a time, with no links or search across them (§7). |
 | D25 | **Meetings** (lunches, interviews, calls) are `event` entities of kind `meeting`, linked to people by `attended`. New meetings default to restriction `personal`. |
 | D26 | **Auto-built collections:** a collection can be built from a syllabus or a paper's reference list, keeping a `derived-from` link to its source item; extracted entries are confirmed by the user (§14). Retrieval of the files for wanted items is deferred to a later release (§18). |
+| D27 | **To Do** replaces *Pending* as the first mode (§22.3). It shows user-created **tasks** (a new record type, one file each, §12) together with **attention items** computed from the library state and never stored. Tasks are deliberately simple (no projects, subtasks or recurrence). Reminders go through Apple Calendar or Google Calendar (`.ics` or a prefilled link) and Apple Reminders (via a Shortcut, Apple devices only); MayaLib's task stays the source of truth, nothing syncs back, and there is no calendar subscription (§22.6). |
+| D28 | **Capture** works on every device and never forces filing, but offers filing on the same sheet; captures are saved locally first, and metadata lookup follows in the background (§22.7). Device roles: reading and annotation mainly on the Boox, filing and cleanup mainly on the Mac, capture anywhere. |
 
 ## 20. Open questions
 
@@ -637,8 +642,9 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 8. ~~**Static host and address:**~~ *Resolved: D20 (Cloudflare; app at `app.mayalib.org`). Keep the domain on auto-renew with registrar lock; if it is ever lost, remove it from the OAuth allowed origins and revoke MayaLib's access immediately.*
 9. **Drive permission scope** (provisionally `drive.file`, D18; confirm in Spike 0): `drive.file` (the narrowest: only files MayaLib created or that the user picks; files arriving by other routes, such as the iOS Shortcut, Boox exports or the Mac's Drive folder, must be imported through the Google Picker) versus `drive` (full Drive access: those routes work directly, and the Mac could use the Drive for desktop folder; costs: broad access, plus a one-time "unverified app" warning). Leaning `drive.file` for v1 with a picker-based "import from inbox" step. To confirm in a setup spike: token and consent behavior for an unverified personal-use app.
 10. **Storing references** (needed for auto-built collections, §14): the citation graph among library items is derived (§10), but references to works *not* in the library, and the user's decisions about them (want / ignore / matches item X), are not rebuildable and must be stored. References also belong to a version (working paper and published article often cite different works). Sketch: extracted references per file, derived and stored beside the extracted text (`<file>.refs.json`, §9.3), plus the user's decisions in the item's own files. To settle before reference extraction is built.
-11. **UX names** (§22.1): *Catalog* or *Browse* for the finding mode; *Pending* as the label for the mode and for the reading status `core:inbox` (provisional; "Inbox" read as messaging, "In process" collides with *Reading*); the user-facing umbrella for entities (*People & places* provisional).
+11. **UX names** (§22.1): *Catalog* or *Browse* for the finding mode; ~~the first mode's name~~ (*resolved: To Do*, D27; the reading status `core:inbox` is labelled *Unfiled*); the user-facing umbrella for entities (*People & places* provisional).
 12. **Locations for entities:** a geographic view (§22.3) needs locations on organizations and events. Additive field (ROR can supply many); to define when that view is built.
+13. **To verify on devices** (add to Spike 0): the Web Share Target for the installed app on the Boox (would bring Android share capture into v1); opening a downloaded `.ics` from the iOS Home Screen app; launching a Shortcut by `shortcuts://` URL from the Home Screen app and from the Mac.
 
 ## 21. Spike 0 findings
 
@@ -711,6 +717,7 @@ The client ID identifies a **deployment**, not a user. It contains no name or em
 | **Note** | A highlight, comment, summary, question, estimate or idea. Ideas need not belong to an item. |
 | **People & places** | The user-facing umbrella for entities (§10): people, organizations, venues, events and meetings. "Entity" is not used in the UI. *(Name provisional, §20.11.)* |
 | **Collection** | An ordered, sectioned list of items: reading list, syllabus, project, field exam, reading group. |
+| **Task** | Something the user means to do, optionally with a due date and links to what it concerns (§12). Shown in *To Do* with the attention items the system computes. |
 
 Labels come from taxonomy labels, never from IDs, so renaming a label in the UI never changes data.
 
@@ -724,12 +731,12 @@ Labels come from taxonomy labels, never from IDs, so renaming a label in the UI 
 │      mode content (1–3 panes by width)       │
 │                                              │
 ├──────────────────────────────────────────────┤
-│  Pending   Reading   Catalog   Collections   │  bottom bar (narrow)
+│  To Do     Reading   Catalog   Collections   │  bottom bar (narrow)
 └──────────────────────────────────────────────┘
 ```
 
 - **Header** (thin): library name, which opens the header menu (switch library, Settings, Help, account and Drive access); where the user is (mode and location); global search; the sync indicator required by §3.2 rule 2 (e.g. "⟳ 2" unsynced changes).
-- **Modes:** *Pending*, *Reading*, *Catalog*, *Collections* (§22.3). On narrow screens, a bottom bar; on wide screens, a side rail with the same icons, labels and order, with Settings pinned at the rail's foot. Same places, different position (D22).
+- **Modes:** *To Do*, *Reading*, *Catalog*, *Collections* (§22.3). On narrow screens, a bottom bar; on wide screens, a side rail with the same icons, labels and order, with Settings pinned at the rail's foot. Same places, different position (D22).
 - **Back navigation is in-app.** An iOS Home Screen app has no browser back button; the Boox's system back button must do the same thing as the in-app one.
 - **Quick actions** available from anywhere: new idea; capture or add an item (by DOI, ISBN, URL or file).
 - **Settings** is a full screen opened from the header menu: storage per residency class and budgets (§5.5), Drive access and granted scopes (§21.1), providers, templates, taxonomy editing, display (e-ink mode), devices, help.
@@ -738,7 +745,7 @@ Labels come from taxonomy labels, never from IDs, so renaming a label in the UI 
 
 | Mode | The question it answers | Contents |
 |---|---|---|
-| **Pending** | "What's come in, and what's waiting on me?" | New captures and imports to file (`inbox/`, reading status `core:inbox`); decisions waiting on the user: sync conflicts, names to match to people (D15), restrictions coming due (§13), entries proposed by auto-built collections (§14). Later: a *to get* list of wanted items with metadata but no file (§18). "Acquired?" is kept separate from "read?". |
+| **To Do** | "What do I need to do, and what's waiting on me?" | Two kinds, shown together but built differently. **Tasks** the user creates (§12), sorted by due date; due dates of collections (field exams, reading groups) appear alongside. **Attention items**, computed from the library and never stored, which disappear once resolved: captures to file (*Unfiled*, `inbox/`), sync conflicts, names to match to people (D15), restrictions coming due (§13), entries proposed by auto-built collections (§14). Later: a *to get* list of wanted items with metadata but no file (§18); "acquired?" is kept separate from "read?". Scheduling and reminders: §22.6. |
 | **Reading** | "What am I in the middle of?" | Items with status `reading`, each reopening at the user's last position. |
 | **Catalog** | "What do I have?" | Find and browse anything. A **scope selector**: Items · People & places · Notes (plus a combined *All*, not the default, since mixed lists are hard to scan). Filters follow the query syntax (§6.5); browsing a taxonomy (e.g. JEL J2) is a filter. **Views:** list everywhere; later a graph and a geographic map, mainly for People & places (v2, §20.12). An item's page has a *connections* link that opens Catalog centred on it. |
 | **Collections** | "What's on this list or project?" | Collections as workspaces: sections, required and optional members, due dates, progress, ideas; creating a collection by hand or auto-building it from a syllabus or reference list (§14). |
@@ -748,7 +755,7 @@ Notes have no mode of their own: they are reached through their item (opening a 
 ### 22.4 Reader
 
 - **Full screen, outside the modes:** no header or bar while reading. A light tap brings up the reader's own controls (back, notes panel, highlight, table of contents, version switch); they hide again.
-- Opened from anywhere (Pending, Reading, a search hit, a collection, a note); *back* returns there.
+- Opened from anywhere (To Do, Reading, a search hit, a collection, a note); *back* returns there.
 - **Highlighting uses native text selection.** The selection is remembered as it changes, because on iOS a tap on a button clears it first (§21.1).
 - On wide screens, the notes for the item can stay open beside the page.
 
@@ -760,6 +767,33 @@ Layout follows traits, not device identity (D22):
 - **Input:** touch targets sized for fingers when there is no pointer; keyboard shortcuts when there is a keyboard.
 - **E-ink mode** (a display setting any device can turn on, default on the Boox): no animation or transitions; high contrast; paging rather than smooth scrolling; minimal redraws (status changes do not redraw the page); graph views fall back to lists.
 
-### 22.6 Still to design
+### 22.6 Scheduling, reminders and other apps
 
-Per-device priority flows (D22); the screens within each mode; capture flows and the capture preview with restriction choice (§21.1); onboarding and library creation; how conflicts and coverage are shown in detail.
+MayaLib cannot notify the user while it is closed: iOS allows notifications from Home Screen web apps only through a push server, and MayaLib has none by design (§3.1); scheduled notifications are not dependable for web apps on Android either. So inside MayaLib, due dates only sort and flag entries in *To Do* when it is open. Reminders that reach the user go through apps they already use (assumed: Apple Calendar, possibly Google Calendar, and Apple Reminders):
+
+- **Add to calendar** (every device): a downloaded `.ics` event, which the iPhone and Mac open into Apple Calendar, or a prefilled Google Calendar event link, which needs no Google permission. The event carries a link back to the task or item in MayaLib.
+- **Send to Reminders** (iPhone and Mac only): Reminders has no web interface, so MayaLib opens an iOS/macOS Shortcut by URL (`shortcuts://run-shortcut?…`), which creates the reminder with a link back. Elsewhere, the action is shown as unavailable with the reason (D22).
+- **The MayaLib task stays the source of truth.** Nothing flows back from Calendar or Reminders (neither can be read from a web app), so completing a reminder does not complete the task. The hand-off is a nudge, not a sync.
+- **Not done:** a calendar *subscription* that updates by itself. It needs a feed at a public address, which means a server or a publicly shared Drive file, a privacy hole.
+
+### 22.7 Capture flow
+
+**Device roles.** Reading and annotation happen mainly on the Boox; filing and cleanup mainly on the Mac. Capture happens on whatever device is at hand, so it is first-class on all three.
+
+**Rules:**
+
+1. **Capture takes seconds and never forces filing, but offers it.** One action, then a short confirmation: a guessed title, a *Private* switch (signed-in pages can sweep up sensitive content, §21.1), and *Done*. Filing fields (collection, tags, reading status, a task such as "read before Tuesday") are on the same sheet for when the user has the time and inclination; skipping them leaves the item *Unfiled* in *To Do*.
+2. **Saved on the device immediately**, uploaded when possible, so capture works offline. It appears in *To Do* on every device once synced.
+3. **Metadata lookup runs afterwards** (DOI, Crossref, ISBN); its suggestions wait in *To Do* for confirmation.
+
+| What | Mac | iPhone | Boox |
+|---|---|---|---|
+| Web page or PDF in the browser | bookmarklet (later, an extension) | bookmarklet → capture page → Drive `inbox/` (§21.1) | share target (§20.13) or bookmarklet |
+| Reference heard or seen | quick action: type a title, DOI or URL | same | same (voice dictation may help) |
+| Book in hand | type the ISBN | photo of the barcode (needs a small barcode library; iOS Safari has no built-in reader) | as iPhone, if the camera is usable |
+| File from email or elsewhere | drag into MayaLib | Files → Drive `inbox/` | share target |
+| A thought | quick action: new idea | same | same |
+
+### 22.8 Still to design
+
+Remaining flows (a Boox reading session; Mac filing and cleanup); the screens within each mode; the capture page in detail; onboarding and library creation; how conflicts and coverage are shown in detail.
